@@ -5,7 +5,7 @@ use crate::{
     transition::{Direction, Transition},
 };
 
-use super::AnimationDomain;
+use super::{AnimationDomain, Diffable};
 
 /// An optional subtree that can be rendered with a transition.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -32,6 +32,43 @@ impl<Subtree, T> TransitionOption<Subtree, T> {
     }
 }
 
+impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> {
+    const SIZE: usize = 1 + Subtree::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        if let (
+            Self::Some {
+                subtree: this_subtree,
+                size: this_size,
+                transition: this_transition,
+            },
+            Self::Some {
+                subtree: other_subtree,
+                size: other_size,
+                transition: other_transition,
+            },
+        ) = (self, other)
+        {
+            let mut changed = this_size != other_size || this_transition != other_transition;
+            let r = differ.reserve();
+
+            changed |= if !changed {
+                this_subtree.diff_with(other_subtree, differ)
+            } else {
+                differ.push_repeated(true, Subtree::SIZE);
+                true
+            };
+
+            differ.commit(r, changed);
+            changed
+        } else {
+            differ.push(true);
+            differ.push_repeated(true, Subtree::SIZE);
+            true
+        }
+    }
+}
+
 impl<Subtree: AnimatedJoin + Clone, T: Transition> AnimatedJoin for TransitionOption<Subtree, T> {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
         if let (
@@ -50,8 +87,11 @@ impl<Subtree: AnimatedJoin + Clone, T: Transition> AnimatedJoin for TransitionOp
     }
 }
 
-impl<Subtree: Render<Color> + Clone, T: Transition, Color: Interpolate + Copy> Render<Color>
-    for TransitionOption<Subtree, T>
+impl<
+    Subtree: Render<Color> + Clone,
+    T: Transition + PartialEq,
+    Color: Interpolate + Copy,
+> Render<Color> for TransitionOption<Subtree, T>
 {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         if let Self::Some { subtree, .. } = self {
@@ -120,6 +160,88 @@ impl<Subtree: Render<Color> + Clone, T: Transition, Color: Interpolate + Copy> R
                 }
             }
             (Self::None, Self::None) => {}
+        }
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(Subtree::SIZE);
+        } else {
+            match (source, target) {
+                (
+                    Self::Some {
+                        subtree: source, ..
+                    },
+                    Self::Some {
+                        subtree: target, ..
+                    },
+                ) => {
+                    Subtree::render_animated_diffed(
+                        render_target,
+                        source,
+                        target,
+                        style,
+                        domain,
+                        differ,
+                    );
+                }
+                (
+                    Self::Some {
+                        subtree: source_subtree,
+                        size,
+                        transition,
+                        ..
+                    },
+                    Self::None,
+                ) => {
+                    if !domain.is_complete() {
+                        let opacity = transition.opacity(Direction::Out, domain.factor);
+                        let offset = transition.transform(Direction::Out, domain.factor, *size);
+                        render_target.with_layer(
+                            |l| l.offset(offset).opacity(opacity),
+                            |render_target| {
+                                source_subtree.render(render_target, style);
+                            },
+                        );
+                    }
+                    differ.ignore(Subtree::SIZE);
+                }
+                (
+                    Self::None,
+                    Self::Some {
+                        subtree: target_subtree,
+                        size,
+                        transition,
+                        ..
+                    },
+                ) => {
+                    if domain.is_complete() {
+                        target_subtree.render(render_target, style);
+                    } else {
+                        let opacity = transition.opacity(Direction::In, domain.factor);
+                        let offset = transition.transform(Direction::In, domain.factor, *size);
+                        render_target.with_layer(
+                            |l| l.offset(offset).opacity(opacity),
+                            |render_target| {
+                                target_subtree.render(render_target, style);
+                            },
+                        );
+                    }
+
+                    differ.ignore(Subtree::SIZE);
+                }
+                (Self::None, Self::None) => {
+                    differ.ignore(Subtree::SIZE);
+                }
+            }
         }
     }
 }

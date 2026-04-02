@@ -138,6 +138,16 @@ const PALETTE: definitions::Palette<Rgb888> = definitions::Palette::from_array([
     Rgb888::new(0x9b, 0x30, 0xff),
 ]);
 
+const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
+where
+    V: ViewLayout<S>,
+    V::Renderables: buoyant::render::Diffable,
+{
+    use buoyant::render::Diffable;
+
+    V::Renderables::SIZE.div_ceil(8)
+}
+
 fn main() {
     let size = Size::new(320, 240);
     let mut display: SimulatorDisplay<Rgb888> = SimulatorDisplay::new(size);
@@ -166,6 +176,8 @@ fn main() {
 
     // Acquire initial focus
     app.focus_forward();
+
+    let mut diffing_mem = [0u8; root_view_differ_size(root_view)];
 
     // Main event loop
     loop {
@@ -213,7 +225,7 @@ fn main() {
         // Only render if active animation was reported or redraw needed
         if app.should_redraw() || target.clear_animation_status() {
             // Render animated transition between source and target trees
-            app.render_animated(&mut target, &PALETTE.white());
+            app.render_animated_diffed(&mut target, &PALETTE.white(), &mut diffing_mem);
 
             // Draw focus overlay
             if std::env::var("DEBUG_FOCUS").is_ok() {
@@ -223,7 +235,7 @@ fn main() {
             // Send to the display
             window.update(target.display());
             // Clear for the next frame
-            target.clear(PALETTE.black());
+            // target.clear(PALETTE.black());
         } else {
             // limit polling for updates to ~30 fps when idle
             std::thread::sleep(Duration::from_millis(33));

@@ -1,6 +1,6 @@
 use crate::primitives::{Interpolate as _, Point};
 
-use super::{AnimatedJoin, AnimationDomain};
+use super::{AnimatedJoin, AnimationDomain, Diffable};
 
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
@@ -21,6 +21,19 @@ impl<T: ?Sized> Clone for Image<'_, T> {
 impl<'a, T: ?Sized> Image<'a, T> {
     pub const fn new(origin: Point, image: &'a T) -> Self {
         Self { origin, image }
+    }
+}
+
+impl<T: ?Sized> Diffable for Image<'_, T> {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.origin != other.origin
+            || !core::ptr::addr_eq(self.image as *const _, other.image as *const _);
+        differ.push(changed);
+
+        // Naïve choice assuming we can't know if the image size changed
+        changed
     }
 }
 
@@ -112,6 +125,19 @@ mod embedded_graphics {
                         .draw_target()
                         .translated(offset.into()),
                 );
+            }
+        }
+
+        fn render_animated_diffed(
+            render_target: &mut impl RenderTarget<ColorFormat = I::Color>,
+            source: &Self,
+            target: &Self,
+            style: &I::Color,
+            domain: &crate::render::AnimationDomain,
+            differ: &mut crate::render::Differ<'_>,
+        ) {
+            if differ.pop() {
+                Self::render_animated(render_target, source, target, style, domain);
             }
         }
     }

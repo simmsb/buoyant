@@ -9,7 +9,7 @@ use std::path::PathBuf;
 use buoyant::{
     focus::{DefaultFocus, RoleSet},
     primitives::Size,
-    render::{AnimatedJoin, Render},
+    render::{AnimatedJoin, Diffable, Render},
     view::ViewLayout,
 };
 use embedded_graphics::pixelcolor::Rgb888;
@@ -99,7 +99,7 @@ impl HarnessConfig {
     where
         V: ViewLayout<S>,
         V::FocusTree: DefaultFocus,
-        V::Renderables: Render<Rgb888> + AnimatedJoin,
+        V::Renderables: Render<Rgb888> + AnimatedJoin + Diffable,
         S: Serialize + 'static,
         F: Fn(&S) -> V,
     {
@@ -120,7 +120,7 @@ impl HarnessConfig {
     where
         V: ViewLayout<S>,
         V::FocusTree: DefaultFocus,
-        V::Renderables: Render<Rgb888> + AnimatedJoin,
+        V::Renderables: Render<Rgb888> + AnimatedJoin + Diffable,
         S: Serialize + 'static,
         F: Fn(&S) -> V,
     {

@@ -7,7 +7,7 @@
 
   languages.rust = {
     enable = true;
-    channel = "stable";
+    channel = "nightly";
     components = [ "rust-src" ];
   };
 }

@@ -1,8 +1,7 @@
 use crate::{
     primitives::{Interpolate, Point, Size, geometry::RoundedRectangle},
     render::{
-        AnimatedJoin, AnimationDomain,
-        shape::{AsShapePrimitive, Inset},
+        AnimatedJoin, AnimationDomain, Diffable, shape::{AsShapePrimitive, Inset}
     },
 };
 
@@ -44,6 +43,16 @@ impl AsShapePrimitive for RoundedRect {
             Size::new(self.size.width, self.size.height),
             self.corner_radius.into(),
         )
+    }
+}
+
+impl Diffable for RoundedRect {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        differ.push(self != other);
+
+        self != other
     }
 }
 

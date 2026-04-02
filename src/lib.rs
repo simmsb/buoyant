@@ -1,7 +1,7 @@
-#![no_std]
+// #![no_std]
 
-#[cfg(any(test, feature = "std"))]
-extern crate std;
+// #[cfg(any(test, feature = "std"))]
+// extern crate std;
 
 pub mod animation;
 pub mod app;

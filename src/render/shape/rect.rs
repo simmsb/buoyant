@@ -1,4 +1,4 @@
-use crate::primitives::Interpolate;
+use crate::{primitives::Interpolate, render::Diffable};
 use crate::primitives::geometry::Rectangle;
 use crate::primitives::{Point, Size};
 use crate::render::AnimationDomain;
@@ -33,6 +33,16 @@ impl AsShapePrimitive for Rect {
     type Primitive = Rectangle;
     fn as_shape(&self) -> Self::Primitive {
         Rectangle::new(self.origin, Size::new(self.size.width, self.size.height))
+    }
+}
+
+impl Diffable for Rect {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        differ.push(self != other);
+
+        self != other
     }
 }
 

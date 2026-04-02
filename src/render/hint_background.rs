@@ -3,7 +3,7 @@ use crate::{
     render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget},
 };
 
-use super::AnimatedJoin;
+use super::{AnimatedJoin, Diffable};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct HintBackground<T, C> {
@@ -14,6 +14,26 @@ pub struct HintBackground<T, C> {
 impl<T, C> HintBackground<T, C> {
     pub const fn new(subtree: T, color: C) -> Self {
         Self { subtree, color }
+    }
+}
+
+impl<T: Diffable, C: PartialEq> Diffable for HintBackground<T, C> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.color != other.color;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed || invalid);
+        invalid
     }
 }
 
@@ -55,6 +75,35 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for HintBackground<T, C> {
                 );
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let color = Interpolate::interpolate(source.color, target.color, domain.factor);
+            render_target.with_layer(
+                |l| l.hint_background(color),
+                |render_target| {
+                    T::render_animated_diffed(
+                        render_target,
+                        &source.subtree,
+                        &target.subtree,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

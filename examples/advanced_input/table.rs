@@ -82,6 +82,45 @@ pub fn table<'a, C: GoodPixelColor>(
     })
 }
 
+fn any_view<C: GoodPixelColor, State>() -> impl View<C, State> {
+    Rectangle
+        .popover(Some(&0), |_| any_view_2())
+}
+
+fn any_view_2<C: GoodPixelColor, State>() -> impl View<C, State> {
+    Rectangle
+}
+
+fn any_render<C: GoodPixelColor>() -> impl buoyant::render::Render<C> {
+    let a = buoyant::render::Rect {
+        origin: buoyant::primitives::Point::new(0, 0),
+        size: buoyant::primitives::Size::new(0, 0),
+    };
+
+    let subtree = buoyant::render::TransitionOption::Some {
+            subtree: a.clone(),
+            size: a.size.clone(),
+            transition: buoyant::transition::Opacity,
+        };
+    let b = buoyant::render::Animate::new(
+        subtree,
+        buoyant::animation::Animation::linear(core::time::Duration::from_secs(1)),
+        core::time::Duration::from_secs(1),
+        true,
+    );
+
+    let r = (a, b);
+    r
+}
+
+// fn foo<T: View<C, State>, C, State>(t: T) {}
+// fn bar<C: Copy>() {
+//     // let a = Capsule;
+//     let a = ForEach::<10>::new_horizontal(&[1, 2], move |i| {
+//     });
+//     foo::<_, C, ()>(a);
+// }
+
 fn ie_cell<C: GoodPixelColor>(
     name: IeName<'_>,
     ie: f32,

@@ -3,7 +3,7 @@ use crate::{
     render_target::RenderTarget,
 };
 
-use super::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render};
+use super::{AnimatedJoin, AnimationDomain, ContentShape, Diffable, IntrinsicShape, Render};
 
 /// A render tree node that clips its children
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -15,6 +15,26 @@ pub struct Clipped<T> {
 impl<T> Clipped<T> {
     pub const fn new(subtree: T, clip_rect: Rectangle) -> Self {
         Self { subtree, clip_rect }
+    }
+}
+
+impl<T: Diffable> Diffable for Clipped<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.clip_rect != other.clip_rect;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed || invalid);
+        changed || invalid
     }
 }
 
@@ -63,6 +83,39 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Clipped<T> {
                 );
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let clip_rect = Rectangle::interpolate(
+                source.clip_rect.clone(),
+                target.clip_rect.clone(),
+                domain.factor,
+            );
+            render_target.with_layer(
+                |l| l.clip(&clip_rect),
+                |render_target| {
+                    T::render_animated_diffed(
+                        render_target,
+                        &source.subtree,
+                        &target.subtree,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

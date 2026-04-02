@@ -1,4 +1,4 @@
-use crate::primitives::geometry::Rectangle;
+use crate::{primitives::geometry::Rectangle, render::Diffable};
 use crate::primitives::{Interpolate, Point};
 use crate::render::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render};
 use crate::render_target::{RenderTarget, SolidBrush, Stroke};
@@ -14,6 +14,16 @@ pub struct LineRenderable<const N: usize> {
     pub line_width: u32,
     /// The bounding frame of the chart area.
     pub frame: Rectangle,
+}
+
+impl<const N: usize> Diffable for LineRenderable<N> {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        differ.push(self != other);
+
+        self.frame != other.frame
+    }
 }
 
 impl<const N: usize> AnimatedJoin for LineRenderable<N> {
@@ -58,6 +68,19 @@ impl<const N: usize, C: Copy> Render<C> for LineRenderable<N> {
         let mut joined = target.clone();
         joined.join_from(source, domain);
         joined.render(render_target, style);
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut crate::render::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+        }
     }
 }
 

@@ -1,4 +1,4 @@
-use crate::primitives::{Interpolate, Point};
+use crate::{primitives::{Interpolate, Point}, render::Diffable};
 use crate::render::shape::{AsShapePrimitive, Inset};
 
 use super::{AnimatedJoin, AnimationDomain};
@@ -31,6 +31,16 @@ impl AsShapePrimitive for Circle {
     type Primitive = crate::primitives::geometry::Circle;
     fn as_shape(&self) -> Self::Primitive {
         Self::Primitive::new(self.origin, self.diameter)
+    }
+}
+
+impl Diffable for Circle {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        differ.push(self != other);
+
+        self != other
     }
 }
 

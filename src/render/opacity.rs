@@ -4,6 +4,8 @@ use crate::{
     render_target::RenderTarget,
 };
 
+use super::Diffable;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Opacity<T> {
     pub subtree: T,
@@ -13,6 +15,26 @@ pub struct Opacity<T> {
 impl<T> Opacity<T> {
     pub const fn new(subtree: T, opacity: u8) -> Self {
         Self { subtree, opacity }
+    }
+}
+
+impl<T: Diffable> Diffable for Opacity<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.opacity != other.opacity;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed || invalid);
+        invalid
     }
 }
 
@@ -59,6 +81,38 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Opacity<T> {
                 );
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let opacity = Interpolate::interpolate(source.opacity, target.opacity, domain.factor);
+            if opacity == 0 {
+                return;
+            }
+            render_target.with_layer(
+                |l| l.opacity(opacity),
+                |render_target| {
+                    T::render_animated_diffed(
+                        render_target,
+                        &source.subtree,
+                        &target.subtree,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

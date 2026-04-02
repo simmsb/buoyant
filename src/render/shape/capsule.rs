@@ -1,4 +1,4 @@
-use crate::primitives::{Interpolate as _, Point, Size, geometry::RoundedRectangle};
+use crate::{primitives::{Interpolate as _, Point, Size, geometry::RoundedRectangle}, render::Diffable};
 use crate::render::shape::{AsShapePrimitive, Inset};
 
 use super::{AnimatedJoin, AnimationDomain};
@@ -35,6 +35,16 @@ impl AsShapePrimitive for Capsule {
             Size::new(self.size.width, self.size.height),
             radius,
         )
+    }
+}
+
+impl Diffable for Capsule {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        differ.push(self != other);
+
+        self != other
     }
 }
 

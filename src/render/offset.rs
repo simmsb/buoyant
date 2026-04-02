@@ -3,7 +3,7 @@ use crate::{
     render_target::RenderTarget,
 };
 
-use super::{AnimatedJoin, AnimationDomain, IntrinsicShape, Render};
+use super::{AnimatedJoin, AnimationDomain, Diffable, IntrinsicShape, Render};
 
 /// A render tree item that offsets its children by a fixed amount.
 /// The offset is animated, resulting in all children moving in unison.
@@ -17,6 +17,26 @@ impl<T> Offset<T> {
     /// Create a new offset render tree item
     pub const fn new(offset: Point, subtree: T) -> Self {
         Self { offset, subtree }
+    }
+}
+
+impl<T: Diffable> Diffable for Offset<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let mut changed = self.offset != other.offset;
+
+        let r = differ.reserve();
+
+        changed |= if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed);
+        changed
     }
 }
 
@@ -57,6 +77,35 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Offset<T> {
                 );
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let offset = Point::interpolate(source.offset, target.offset, domain.factor);
+            render_target.with_layer(
+                |l| l.offset(offset),
+                |render_target| {
+                    T::render_animated_diffed(
+                        render_target,
+                        &source.subtree,
+                        &target.subtree,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

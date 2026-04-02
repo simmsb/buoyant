@@ -55,13 +55,136 @@ pub use text::Text;
 pub use transform::Transform;
 pub use transition_option::TransitionOption;
 
+#[derive(Debug)]
+pub struct Differ<'a> {
+    /// granular is false if we've entered a context where we don't statically
+    /// know the size
+    granular: bool,
+    idx: usize,
+    pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
+    anything_changed: bool,
+}
+
+#[derive(Debug)]
+pub struct DifferReservation(usize);
+
+#[derive(Debug, Clone, Copy)]
+pub struct DifferNote(usize);
+
+impl<'a> Differ<'a> {
+    pub fn new(array: &'a mut bitvec::slice::BitSlice<u8>) -> Self {
+        Self {
+            granular: true,
+            idx: 0,
+            array,
+            anything_changed: false,
+        }
+    }
+
+    pub fn reset_anything_changed(&mut self) -> bool {
+        let anything_changed = self.anything_changed;
+        self.anything_changed = false;
+        anything_changed
+    }
+
+    pub fn restore_anything_changed(&mut self, changed: bool) {
+        self.anything_changed |= changed;
+    }
+
+    pub fn reserve(&mut self) -> DifferReservation {
+        if !self.granular {
+            return DifferReservation(self.idx)
+        }
+
+        let idx = self.idx;
+        self.idx += 1;
+
+        DifferReservation(idx)
+    }
+
+    pub fn note(&mut self) -> DifferNote {
+        return DifferNote(self.idx)
+    }
+
+    pub fn overwrite_from_note(&mut self, note: DifferNote, changed: bool) {
+        println!("Overwrite from note {} to {}", note.0, self.idx);
+        self.anything_changed |= changed;
+        self.array[note.0..self.idx].fill(changed);
+    }
+
+    pub fn commit(&mut self, reservation: DifferReservation, changed: bool) {
+        self.anything_changed |= changed;
+        self.array.set(reservation.0, changed);
+    }
+
+    pub fn push(&mut self, changed: bool) {
+        self.anything_changed |= changed;
+        if !self.granular {
+            self.array.set(0, changed);
+        }
+
+        let idx = self.idx;
+        self.idx += 1;
+
+        self.array.set(idx, changed);
+    }
+
+    pub fn push_repeated(&mut self, changed: bool, n: usize) {
+        for _ in 0..n {
+            self.push(changed);
+        }
+    }
+
+    pub fn pop(&mut self) -> bool {
+        if !self.granular {
+            return self.array[0];
+        }
+
+        let idx = self.idx;
+        self.idx += 1;
+
+        self.array[idx]
+    }
+
+    pub fn ignore(&mut self, n: usize) {
+        self.idx += n;
+    }
+
+    pub fn reset(&mut self) {
+        self.idx = 0;
+    }
+
+    pub fn any_changed(&self) -> bool {
+        self.anything_changed
+    }
+}
+
+pub trait Diffable {
+    /// The number of differ slots needed for this node and all of its children.
+    const SIZE: usize;
+
+    /// Compute the diff of this node in comparison with another.
+    ///
+    /// Whether this node changed or not should be written to the `differ`. This
+    /// function is also responsible for calling `diff_with` on any of its
+    /// children.
+    ///
+    /// The return value indicates whether this component changed in some way
+    /// which means the parent should also be invalid (e.g. because it moved or
+    /// resized).
+    ///
+    /// Therefore the children should be diffed first, and then the result of
+    /// this call ORed with whether the parent changed.
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool;
+}
+
 pub trait AnimatedJoin {
     /// Modifies a target tree by joining it with the source tree
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain);
 }
 
 /// A type that can be rendered to a target and animated
-pub trait Render<Color>: AnimatedJoin + IntrinsicShape {
+pub trait Render<Color>: AnimatedJoin + IntrinsicShape + Diffable {
     /// Render the view to the screen
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color);
 
@@ -75,6 +198,15 @@ pub trait Render<Color>: AnimatedJoin + IntrinsicShape {
         target: &Self,
         style: &Color,
         domain: &AnimationDomain,
+    );
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut Differ<'_>,
     );
 }
 

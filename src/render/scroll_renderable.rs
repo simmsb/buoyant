@@ -4,6 +4,8 @@ use crate::{
     render_target::RenderTarget,
 };
 
+use super::Diffable;
+
 // This hacks together scroll functionality from existing primitives, but
 // a bespoke implementation will eventually replace it
 type ScrolInner<T> = Offset<Animate<(Offset<T>, Option<Capsule>, Option<Capsule>), bool>>;
@@ -49,6 +51,29 @@ impl<T> ScrollRenderable<T> {
     }
 }
 
+impl<T: Diffable> Diffable for ScrollRenderable<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.scroll_size != other.scroll_size || self.inner_size != other.inner_size;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.inner.diff_with(&other.inner, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed || invalid);
+
+        // we set our bounds, so we know changes to the children don't
+        // invalidate any of our parents.
+        changed
+    }
+}
+
 impl<T: AnimatedJoin> AnimatedJoin for ScrollRenderable<T> {
     fn join_from(&mut self, source: &Self, domain: &crate::render::AnimationDomain) {
         self.scroll_size = Size::interpolate(source.scroll_size, self.scroll_size, domain.factor);
@@ -80,6 +105,34 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for ScrollRenderable<T> {
                 Render::render_animated(render_target, &source.inner, &target.inner, style, domain);
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &super::AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            render_target.with_layer(
+                |l| l.clip(&Rectangle::new(target.inner.offset, target.scroll_size)),
+                |render_target| {
+                    Render::render_animated_diffed(
+                        render_target,
+                        &source.inner,
+                        &target.inner,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

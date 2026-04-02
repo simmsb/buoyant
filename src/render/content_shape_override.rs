@@ -1,6 +1,8 @@
 use crate::render::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render};
 use crate::render_target::RenderTarget;
 
+use super::Diffable;
+
 /// A render tree node that overrides the content shape of its subtree.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ContentShapeOverride<T> {
@@ -11,6 +13,26 @@ pub struct ContentShapeOverride<T> {
 impl<T> ContentShapeOverride<T> {
     pub const fn new(subtree: T, shape: ContentShape) -> Self {
         Self { subtree, shape }
+    }
+}
+
+impl<T: Diffable> Diffable for ContentShapeOverride<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let mut changed = self.shape != other.shape;
+
+        let r = differ.reserve();
+
+        changed |= if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed);
+        changed
     }
 }
 
@@ -39,6 +61,22 @@ impl<T: Render<Color>, Color> Render<Color> for ContentShapeOverride<T> {
             style,
             domain,
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            T::render_animated_diffed(render_target, &source.subtree, &target.subtree, style, domain, differ);
+        }
     }
 }
 

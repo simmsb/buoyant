@@ -11,7 +11,7 @@ use crate::{
     event::{Event, EventContext, EventResult},
     focus::{DefaultFocus, Role, RoleSet},
     primitives::{Point, Size, transform::LinearTransform},
-    render::{AnimatedJoin, AnimationDomain, ContentShape, Render},
+    render::{AnimatedJoin, AnimationDomain, ContentShape, Diffable, Differ, Render},
     render_target::{RenderTarget, SolidBrush, Stroke},
     view::{View, ViewLayout},
 };
@@ -83,7 +83,7 @@ impl<V, S, F> App<V, S, F>
 where
     V: ViewLayout<S>,
     V::FocusTree: DefaultFocus,
-    V::Renderables: AnimatedJoin,
+    V::Renderables: AnimatedJoin + Diffable,
     F: Fn(&S) -> V,
 {
     /// Creates a new `App` with the given initial state, display size, and view function.
@@ -283,6 +283,48 @@ where
     ///
     /// If a rebuild is pending, it will be performed before rendering.
     /// Rebuilds can be eagerly triggered by calling [`rebuild()`](Self::rebuild()).
+    ///
+    /// !!! `working_mem` must be at least as large as [`T::Renderables::SIZE`].div_ceil(8)
+    pub fn render_animated_diffed<T, C>(
+        &mut self,
+        target: &mut T,
+        color: &C,
+        working_mem: &mut [u8],
+    ) where
+        V: View<C, S>,
+        T: RenderTarget<ColorFormat = C>,
+    {
+        self.finalize_view();
+
+        let bitslice = bitvec::slice::BitSlice::from_slice_mut(working_mem);
+        let mut differ = Differ::new(bitslice);
+
+        // maybe we need to clear the target with color if this returns that the root view is invalidated?
+        let _ = self
+            .trees
+            .source()
+            .diff_with(self.trees.target(), &mut differ);
+
+        differ.reset();
+
+        println!("{}", differ.array);
+
+        let domain = AnimationDomain::top_level(self.elapsed);
+        Render::render_animated_diffed(
+            target,
+            self.trees.source(),
+            self.trees.target(),
+            color,
+            &domain,
+            &mut differ,
+        );
+        self.requires_redraw = false;
+    }
+
+    /// Renders the view to the given render target.
+    ///
+    /// If a rebuild is pending, it will be performed before rendering.
+    /// Rebuilds can be eagerly triggered by calling [`rebuild()`](Self::rebuild()).
     pub fn render_only_target<T, C>(&mut self, target: &mut T, color: &C)
     where
         V: View<C, S>,
@@ -333,7 +375,7 @@ impl<V, S, F> Harness for App<V, S, F>
 where
     V: ViewLayout<S>,
     V::FocusTree: DefaultFocus,
-    V::Renderables: AnimatedJoin,
+    V::Renderables: AnimatedJoin + Diffable,
     F: Fn(&S) -> V,
 {
     fn send(&mut self, event: impl Into<Event>) -> EventResult {

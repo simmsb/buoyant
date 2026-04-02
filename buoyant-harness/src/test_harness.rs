@@ -12,7 +12,7 @@ use buoyant::{
     app::{App, Harness},
     event::{Event, EventResult},
     focus::{DefaultFocus, RoleSet},
-    render::{AnimatedJoin, AnimationDomain, Render},
+    render::{AnimatedJoin, AnimationDomain, Diffable, Render},
     render_target::{EmbeddedGraphicsRenderTarget, RenderTarget},
     view::ViewLayout,
 };
@@ -94,7 +94,7 @@ impl<V, S, F> Harness for TestHarness<V, S, F>
 where
     V: ViewLayout<S>,
     V::FocusTree: DefaultFocus,
-    V::Renderables: AnimatedJoin,
+    V::Renderables: AnimatedJoin + Diffable,
     F: Fn(&S) -> V,
 {
     fn send(&mut self, event: impl Into<Event>) -> EventResult {
@@ -106,7 +106,7 @@ impl<V, S, F> TestHarness<V, S, F>
 where
     V: ViewLayout<S>,
     V::FocusTree: DefaultFocus,
-    V::Renderables: Render<Rgb888> + AnimatedJoin,
+    V::Renderables: Render<Rgb888> + AnimatedJoin + Diffable,
     S: Serialize + 'static,
     F: Fn(&S) -> V,
 {

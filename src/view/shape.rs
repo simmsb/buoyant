@@ -16,8 +16,7 @@ use crate::{
     layout::ResolvedLayout,
     primitives::{Point, ProposedDimensions},
     render::{
-        AnimatedJoin, StrokedShape,
-        shape::{AsShapePrimitive, Inset},
+        AnimatedJoin, Diffable, StrokedShape, shape::{AsShapePrimitive, Inset}
     },
     transition::Opacity,
     view::{ViewLayout, ViewMarker},
@@ -88,7 +87,7 @@ impl<T: ViewMarker> ViewMarker for Stroked<T> {
 impl<T, Captures: ?Sized> ViewLayout<Captures> for Stroked<T>
 where
     T: ViewLayout<Captures>,
-    T::Renderables: Inset + AnimatedJoin + Clone + AsShapePrimitive,
+    T::Renderables: Inset + AnimatedJoin + Diffable + Clone + AsShapePrimitive,
 {
     type Sublayout = T::Sublayout;
     type State = T::State;

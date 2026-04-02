@@ -1,6 +1,54 @@
 use crate::primitives::geometry::Rectangle;
 
-use super::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget};
+use super::{
+    AnimatedJoin, AnimationDomain, ContentShape, Diffable, Differ, IntrinsicShape, Render,
+    RenderTarget,
+};
+
+macro_rules! impl_diffable_for_collections {
+    ($(($n:tt, $type:ident)),+) => {
+        impl<$($type: crate::render::Diffable),+> crate::render::Diffable for ($($type),+) {
+            const SIZE: usize = 0 $(+ $type::SIZE)+;
+
+            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+                let initial_anything_changed = differ.reset_anything_changed();
+                let note = differ.note();
+                let mut size_so_far = 0;
+                let mut invalid = false;
+
+                $({
+                    invalid |= self.$n.diff_with(&other.$n, differ);
+                    size_so_far += $type::SIZE;
+
+                    if invalid {
+                        differ.overwrite_from_note(note, true);
+                    }
+
+                    if invalid || differ.any_changed() {
+                        differ.push_repeated(true, Self::SIZE - size_so_far);
+                        return invalid;
+                    }
+                })+
+
+                differ.restore_anything_changed(initial_anything_changed);
+                invalid
+            }
+        }
+    };
+}
+
+#[rustfmt::skip]
+mod impl_diffable {
+    impl_diffable_for_collections!((0, T0), (1, T1));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6), (7, T7));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6), (7, T7), (8, T8));
+    impl_diffable_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6), (7, T7), (8, T8), (9, T9));
+}
 
 macro_rules! impl_join_for_collections {
     ($(($n:tt, $type:ident)),+) => {
@@ -70,11 +118,65 @@ mod impl_content_shape {
     impl_content_shape_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6), (7, T7), (8, T8), (9, T9));
 }
 
+/// For unsized slices we have no way to know the size, so we have to fall back
+/// to whether the entire list changed.
+impl<T: Diffable> Diffable for [T] {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
+        let mut array = bitvec::array::BitArray::<[u8; 1]>::ZERO;
+        let mut child_differ = Differ::new(array.as_mut_bitslice());
+        let mut any_changed = false;
+        let mut any_invalid = false;
+
+        let r = differ.reserve();
+
+        for (a, b) in self.iter().zip(other) {
+            any_invalid |= a.diff_with(b, &mut child_differ);
+            any_changed |= child_differ.any_changed();
+        }
+
+        differ.commit(r, any_changed | any_invalid);
+        any_invalid
+    }
+}
+
 impl<T: AnimatedJoin> AnimatedJoin for [T] {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
         self.iter_mut().zip(source).for_each(|(target, source)| {
             target.join_from(source, domain);
         });
+    }
+}
+
+impl<T: Diffable, const N: usize> Diffable for [T; N] {
+    const SIZE: usize = T::SIZE * N;
+
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
+        let mut any_invalid = false;
+        for (a, b) in self.iter().zip(other) {
+            any_invalid |= a.diff_with(b, differ);
+        }
+
+        any_invalid
+    }
+}
+
+impl<T: Diffable, const N: usize> Diffable for heapless::Vec<T, N> {
+    const SIZE: usize = T::SIZE * N;
+
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
+        let mut any_invalid = false;
+        for (a, b) in self.iter().zip(other) {
+            any_invalid |= a.diff_with(b, differ);
+        }
+
+        // fill what wasn't compared in the slice with false
+        let remainder = N - self.len().min(other.len());
+
+        differ.push_repeated(false, T::SIZE * remainder);
+
+        any_invalid
     }
 }
 
@@ -146,6 +248,26 @@ macro_rules! impl_render_for_collections {
                     );
                 )+
             }
+
+            fn render_animated_diffed(
+                render_target: &mut impl crate::render_target::RenderTarget<ColorFormat = Color>,
+                source: &Self,
+                target: &Self,
+                style: &Color,
+                domain: &crate::render::AnimationDomain,
+                differ: &mut crate::render::Differ<'_>
+            ) {
+                $(
+                    $type::render_animated_diffed(
+                        render_target,
+                        &source.$n,
+                        &target.$n,
+                        style,
+                        domain,
+                        differ
+                    );
+                )+
+            }
         }
     };
 }
@@ -184,6 +306,21 @@ impl<Color, T: Render<Color>> Render<Color> for [T] {
                 T::render_animated(render_target, source, target, style, domain);
             });
     }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut Differ<'_>,
+    ) {
+        // for slices we are all or nothing, so if we aren't marked as changing,
+        // then none of the children changed.
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+        }
+    }
 }
 
 impl<Color, T: Render<Color>, const N: usize> Render<Color> for [T; N] {
@@ -201,6 +338,19 @@ impl<Color, T: Render<Color>, const N: usize> Render<Color> for [T; N] {
         domain: &AnimationDomain,
     ) {
         <[T]>::render_animated(render_target, source, target, style, domain);
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut Differ<'_>,
+    ) {
+        for (a, b) in source.iter().zip(target.iter()) {
+            T::render_animated_diffed(render_target, a, b, style, domain, differ);
+        }
     }
 }
 
@@ -220,6 +370,23 @@ impl<Color, T: Render<Color>, const N: usize> Render<Color> for heapless::Vec<T,
     ) {
         <[T]>::render_animated(render_target, source, target, style, domain);
     }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut Differ<'_>,
+    ) {
+        for (a, b) in source.iter().zip(target.iter()) {
+            T::render_animated_diffed(render_target, a, b, style, domain, differ);
+        }
+
+        let remainder = N - source.len().min(target.len());
+
+        differ.ignore(T::SIZE * remainder);
+    }
 }
 
 /// Make sure tuples render in the correct order
@@ -230,7 +397,7 @@ mod render_order_tests {
     use std::vec;
     use std::{cell::RefCell, rc::Rc, vec::Vec};
 
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, PartialEq)]
     struct OrderTracker {
         order: Rc<RefCell<Vec<usize>>>,
         id: usize,
@@ -239,6 +406,15 @@ mod render_order_tests {
     impl OrderTracker {
         fn new(id: usize, order: Rc<RefCell<Vec<usize>>>) -> Self {
             Self { order, id }
+        }
+    }
+
+    impl super::Diffable for OrderTracker {
+        const SIZE: usize = 1;
+
+        fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+            differ.push(self != other);
+            false
         }
     }
 
@@ -270,6 +446,19 @@ mod render_order_tests {
         ) {
             source.order.borrow_mut().push(source.id);
             target.order.borrow_mut().push(target.id);
+        }
+
+        fn render_animated_diffed(
+            render_target: &mut impl crate::render_target::RenderTarget<ColorFormat = char>,
+            source: &Self,
+            target: &Self,
+            style: &char,
+            domain: &AnimationDomain,
+            differ: &mut crate::render::Differ<'_>,
+        ) {
+            if differ.pop() {
+                Self::render_animated(render_target, source, target, style, domain);
+            }
         }
     }
 

@@ -4,7 +4,7 @@ use crate::{
     render_target::RenderTarget,
 };
 
-use super::AnimationDomain;
+use super::{AnimationDomain, Diffable};
 
 /// A node that tracks a frame and contains a child view.
 ///
@@ -19,6 +19,26 @@ pub struct Container<T> {
 impl<T> Container<T> {
     pub const fn new(frame: Rectangle, child: T) -> Self {
         Self { frame, child }
+    }
+}
+
+impl<T: Diffable> Diffable for Container<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let mut changed = self.frame != other.frame;
+
+        let r = differ.reserve();
+
+        changed |= if !changed {
+            self.child.diff_with(&other.child, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed);
+        changed
     }
 }
 
@@ -43,6 +63,22 @@ impl<T: Render<Color>, Color> Render<Color> for Container<T> {
         domain: &AnimationDomain,
     ) {
         T::render_animated(render_target, &source.child, &target.child, style, domain);
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = Color>,
+        source: &Self,
+        target: &Self,
+        style: &Color,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            T::render_animated_diffed(render_target, &source.child, &target.child, style, domain, differ);
+        }
     }
 }
 

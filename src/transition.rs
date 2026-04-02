@@ -7,7 +7,7 @@ pub static DEFAULT_TRANSITION: Opacity = Opacity::new();
 ///
 /// Among others, [`if_view!`], [`match_view!`], and [`ForEach`] cause their
 /// subviews to be transitioned.
-pub trait Transition: Clone {
+pub trait Transition: Clone + PartialEq {
     /// The offset of the transitioning view at the given animation factor.
     fn transform(&self, direction: Direction, factor: u8, bounds: Size) -> Point;
 

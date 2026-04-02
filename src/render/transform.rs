@@ -3,6 +3,8 @@ use crate::{
     render::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render},
 };
 
+use super::Diffable;
+
 /// Applies the provided linear transform to the inner render tree
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Transform<T> {
@@ -14,6 +16,26 @@ impl<T> Transform<T> {
     #[must_use]
     pub fn new(inner: T, transform: LinearTransform) -> Self {
         Self { inner, transform }
+    }
+}
+
+impl<T: Diffable> Diffable for Transform<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let mut changed = self.transform != other.transform;
+
+        let r = differ.reserve();
+
+        changed |= if !changed {
+            self.inner.diff_with(&other.inner, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed);
+        changed
     }
 }
 
@@ -60,6 +82,39 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Transform<T> {
                 Render::render_animated(render_target, &source.inner, &target.inner, style, domain);
             },
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl crate::render_target::RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let transform = LinearTransform::interpolate(
+                source.transform.clone(),
+                target.transform.clone(),
+                domain.factor,
+            );
+            render_target.with_layer(
+                |l| l.transform(&transform),
+                |render_target| {
+                    Render::render_animated_diffed(
+                        render_target,
+                        &source.inner,
+                        &target.inner,
+                        style,
+                        domain,
+                        differ,
+                    );
+                },
+            );
+        }
     }
 }
 

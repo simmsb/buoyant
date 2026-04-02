@@ -3,7 +3,7 @@ use crate::{
     render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget},
 };
 
-use super::AnimatedJoin;
+use super::{AnimatedJoin, Diffable};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ShadeSubtree<C, T> {
@@ -14,6 +14,26 @@ pub struct ShadeSubtree<C, T> {
 impl<C, T> ShadeSubtree<C, T> {
     pub const fn new(style: C, subtree: T) -> Self {
         Self { style, subtree }
+    }
+}
+
+impl<C: PartialEq, T: Diffable> Diffable for ShadeSubtree<C, T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.style != other.style;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed || invalid);
+        invalid
     }
 }
 
@@ -44,6 +64,30 @@ impl<C: Interpolate + Copy, T: Render<C>> Render<C> for ShadeSubtree<C, T> {
             &style,
             domain,
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let style = Interpolate::interpolate(source.style, target.style, domain.factor);
+            T::render_animated_diffed(
+                render_target,
+                &source.subtree,
+                &target.subtree,
+                &style,
+                domain,
+                differ,
+            );
+        }
     }
 }
 

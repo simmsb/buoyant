@@ -8,6 +8,8 @@ use crate::{
     view::{CharacterWrap, HorizontalTextAlignment, WordWrap, WrapStrategy},
 };
 
+use super::Diffable;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Line {
     pub range: Range<usize>,
@@ -63,6 +65,27 @@ impl<T: Clone, F: Font> Clone for Text<'_, T, F> {
             max_lines: self.max_lines,
             wrap: self.wrap,
         }
+    }
+}
+
+impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
+    const SIZE: usize = 1;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.origin != other.origin
+            || self.size != other.size
+            || self.font as *const _ != other.font as *const _
+            || self.text.as_ref() != other.text.as_ref()
+            || self.alignment != other.alignment
+            || self.max_lines != other.max_lines
+            || self.wrap != other.wrap
+            ;
+
+        let invalid = self.size != other.size
+            || self.origin != other.origin;
+
+        differ.push(changed || invalid);
+        invalid
     }
 }
 
@@ -174,6 +197,19 @@ impl<C: Copy, T: AsRef<str> + Clone, F: FontRender<C>> Render<C> for Text<'_, T,
             wrap: target.wrap,
         }
         .render(render_target, style);
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+        }
     }
 }
 

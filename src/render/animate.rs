@@ -6,7 +6,7 @@ use crate::{
     render_target::RenderTarget,
 };
 
-use super::AnimatedJoin;
+use super::{AnimatedJoin, Diffable};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
@@ -33,6 +33,30 @@ impl<T, U: PartialEq + Clone> Animate<T, U> {
             value,
             is_partial: false,
         }
+    }
+}
+
+impl<T: Diffable, U: PartialEq + Clone> Diffable for Animate<T, U> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let changed = self.animation != other.animation
+            || self.frame_time != other.frame_time
+            || self.value != other.value
+            || self.is_partial != other.is_partial;
+
+        let r = differ.reserve();
+
+        let invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            false
+        };
+
+        differ.commit(r, changed || invalid);
+
+        invalid
     }
 }
 
@@ -129,6 +153,58 @@ impl<C, T: Render<C>, U: PartialEq + Clone> Render<C> for Animate<T, U> {
             style,
             &subdomain,
         );
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut crate::render::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+            differ.ignore(T::SIZE);
+        } else {
+            let (end_time, duration) = if source.value != target.value {
+                let duration = target.animation.duration;
+                (target.frame_time + duration, duration)
+            } else if source.is_partial {
+                // continue source animation
+                let duration = source.animation.duration;
+                (source.frame_time + duration, duration)
+            } else {
+                // no animation
+                (domain.app_time, Duration::from_secs(0))
+            };
+
+            let subdomain = if end_time == Duration::from_secs(0) || domain.app_time >= end_time {
+                // animation has already completed or there was zero duration
+                AnimationDomain {
+                    factor: 255,
+                    app_time: domain.app_time,
+                }
+            } else {
+                render_target.report_active_animation();
+                // compute factor
+                let diff = duration.saturating_sub(end_time.saturating_sub(domain.app_time));
+                let factor = source.animation.curve.factor(diff, duration);
+                AnimationDomain {
+                    factor,
+                    app_time: domain.app_time,
+                }
+            };
+
+            T::render_animated_diffed(
+                render_target,
+                &source.subtree,
+                &target.subtree,
+                style,
+                &subdomain,
+                differ,
+            );
+        }
     }
 }
 

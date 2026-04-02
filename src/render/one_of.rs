@@ -1,6 +1,18 @@
 use crate::render::{ContentShape, IntrinsicShape, Render, RenderTarget};
 
-use super::AnimatedJoin;
+use super::{AnimatedJoin, Diffable};
+
+macro_rules! max {
+    ($x: expr) => ($x);
+    ($x: expr, $($z: expr),+) => {{
+        let y = max!($($z),*);
+        if $x > y {
+            $x
+        } else {
+            y
+        }
+    }}
+}
 
 macro_rules! define_branch {
     ($name:ident, $($variant:ident),+) => {
@@ -9,6 +21,28 @@ macro_rules! define_branch {
             $(
                 $variant($variant),
             )+
+        }
+
+        impl<$($variant),+>  Diffable for $name<$($variant),+>
+            where $($variant: Diffable,)+
+        {
+            const SIZE: usize = max!($($variant::SIZE),+);
+
+            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+                match (self, other) {
+                    $(
+                        (Self::$variant(source), Self::$variant(target)) => {
+                            let invalid = source.diff_with(target, differ);
+                            differ.push_repeated(false, Self::SIZE - $variant::SIZE);
+                            invalid
+                        },
+                    )+
+                    (_, _) => {
+                        differ.push_repeated(true, Self::SIZE);
+                        true
+                    },
+                }
+            }
         }
 
         impl<$($variant),+>  AnimatedJoin for $name<$($variant),+>
@@ -52,6 +86,28 @@ macro_rules! define_branch {
                     )+
                     (_, target) => {
                         target.render(render_target, style);
+                    }
+                }
+            }
+
+            fn render_animated_diffed(
+                render_target: &mut impl RenderTarget<ColorFormat = C>,
+                source: &Self,
+                target: &Self,
+                style: &C,
+                domain: &crate::render::AnimationDomain,
+                differ: &mut crate::render::Differ<'_>,
+            ) {
+                match (source, target) {
+                    $(
+                        (Self::$variant(source), Self::$variant(target)) => {
+                            $variant::render_animated_diffed(render_target, source, target, style, domain, differ);
+                            differ.ignore(Self::SIZE - $variant::SIZE);
+                        },
+                    )+
+                    (_, target) => {
+                        target.render(render_target, style);
+                        differ.ignore(Self::SIZE);
                     }
                 }
             }

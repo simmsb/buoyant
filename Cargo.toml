@@ -54,6 +54,7 @@ embedded-ttf = { version = "^0.2.2", optional = true, default-features = false, 
   "std",
 ] }
 rusttype = { version = "^0.9.3", optional = true }
+bitvec = { version = "1.0.1", default-features = false }
 
 [dev-dependencies]
 tinytga = "^0.5"

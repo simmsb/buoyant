@@ -14,6 +14,8 @@ use crate::{
     render_target::{RenderTarget, SolidBrush, Stroke},
 };
 
+use super::Diffable;
+
 pub trait Inset {
     /// Returns the inset version of the shape.
     #[must_use]
@@ -32,7 +34,7 @@ impl<T: AsShapePrimitive> IntrinsicShape for T {
 }
 
 // Implements fill for all shape primitive types
-impl<T: AnimatedJoin + Clone + AsShapePrimitive + IntrinsicShape, C: Copy> Render<C> for T {
+impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive + IntrinsicShape, C: Copy> Render<C> for T {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = C>, style: &C) {
         render_target.fill(
             LinearTransform::default(),
@@ -53,6 +55,22 @@ impl<T: AnimatedJoin + Clone + AsShapePrimitive + IntrinsicShape, C: Copy> Rende
         joined_shape.join_from(source, domain);
         joined_shape.render(render_target, style);
     }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            // is this correct?
+            Self::render_animated(render_target, source, target, style, domain);
+        }
+
+        differ.ignore(T::SIZE - 1);
+    }
 }
 
 /// A shape that is stroked with a specified line width.
@@ -70,6 +88,27 @@ impl<T> StrokedShape<T> {
     }
 }
 
+impl<T: Diffable> Diffable for StrokedShape<T> {
+    const SIZE: usize = 1 + T::SIZE;
+
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+        let mut changed = self.line_width != other.line_width;
+
+        let r = differ.reserve();
+
+        changed |= if !changed {
+            self.shape.diff_with(&other.shape, differ)
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            true
+        };
+
+        differ.commit(r, changed);
+
+        changed
+    }
+}
+
 impl<T: AnimatedJoin> AnimatedJoin for StrokedShape<T> {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
         self.shape.join_from(&source.shape, domain);
@@ -83,7 +122,7 @@ impl<T: AsShapePrimitive> IntrinsicShape for StrokedShape<T> {
     }
 }
 
-impl<T: AnimatedJoin + Clone + AsShapePrimitive, C: Copy> Render<C> for StrokedShape<T> {
+impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive, C: Copy> Render<C> for StrokedShape<T> {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = C>, style: &C) {
         render_target.stroke(
             &Stroke {
@@ -106,6 +145,22 @@ impl<T: AnimatedJoin + Clone + AsShapePrimitive, C: Copy> Render<C> for StrokedS
         let mut joined_shape = target.clone();
         joined_shape.join_from(source, domain);
         joined_shape.render(render_target, style);
+    }
+
+    fn render_animated_diffed(
+        render_target: &mut impl RenderTarget<ColorFormat = C>,
+        source: &Self,
+        target: &Self,
+        style: &C,
+        domain: &AnimationDomain,
+        differ: &mut super::Differ<'_>,
+    ) {
+        if differ.pop() {
+            Self::render_animated(render_target, source, target, style, domain);
+
+            // TODO: probably don't capture this
+            differ.ignore(T::SIZE);
+        }
     }
 }
 
