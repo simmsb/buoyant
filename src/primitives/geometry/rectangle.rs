@@ -18,6 +18,21 @@ impl Rectangle {
     }
 
     #[must_use]
+    pub const fn from_bounds(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Self {
+        Self::new(
+            Point::new(
+                if min_x < max_x { min_x } else { max_x },
+                if min_y < max_y { min_y } else { max_y },
+            ),
+            Size::new(max_x.abs_diff(min_x), max_y.abs_diff(min_y)),
+        )
+    }
+
+    pub const fn area(&self) -> u32 {
+        self.size.area()
+    }
+
+    #[must_use]
     pub const fn intersects(&self, other: &Self) -> bool {
         let self_right = self.origin.x + self.size.width as i32;
         let self_bottom = self.origin.y + self.size.height as i32;
@@ -36,6 +51,11 @@ impl Rectangle {
             && self.origin.y <= point.y
             && point.x < (self.origin.x + self.size.width as i32)
             && point.y < (self.origin.y + self.size.height as i32)
+    }
+
+    #[must_use]
+    pub fn contains_rect(&self, other: &Self) -> bool {
+        self.intersection_with(other) == Intersection::Contains
     }
 
     /// Determines the relationship of `other` relative to `self`.

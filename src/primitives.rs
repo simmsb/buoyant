@@ -6,6 +6,7 @@ mod point;
 mod size;
 pub mod transform;
 mod unit_point;
+pub mod aabb;
 
 pub use dimension::*;
 pub use interpolate::Interpolate;

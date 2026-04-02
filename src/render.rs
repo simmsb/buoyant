@@ -8,9 +8,9 @@
 
 use core::time::Duration;
 
-use crate::primitives::Point;
-use crate::primitives::geometry;
 use crate::primitives::geometry::Shape;
+use crate::primitives::geometry::{self, Rectangle};
+use crate::primitives::{Point, aabb::StaticAABBTree};
 use crate::render_target::RenderTarget;
 
 mod animate;
@@ -63,6 +63,7 @@ pub struct Differ<'a> {
     idx: usize,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
     anything_changed: bool,
+    aabb: &'a mut StaticAABBTree<20>,
 }
 
 #[derive(Debug)]
@@ -72,13 +73,47 @@ pub struct DifferReservation(usize);
 pub struct DifferNote(usize);
 
 impl<'a> Differ<'a> {
-    pub fn new(array: &'a mut bitvec::slice::BitSlice<u8>) -> Self {
+    pub fn new(
+        array: &'a mut bitvec::slice::BitSlice<u8>,
+        aabb: &'a mut StaticAABBTree<20>,
+    ) -> Self {
         Self {
             granular: true,
             idx: 0,
             array,
             anything_changed: false,
+            aabb,
         }
+    }
+
+    pub fn check_aabb<R: IntrinsicShape>(&self, renderable: &R) -> bool {
+        let Some(bb) = renderable.content_shape().bounding_box() else {
+            return false;
+        };
+        self.test_dirty_region(&bb)
+    }
+
+    pub fn dirty_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
+        let Some(bb) = renderable.content_shape().bounding_box() else {
+            return;
+        };
+        self.add_dirty_region(bb);
+    }
+
+
+    pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
+        let mut result = false;
+        self.aabb.query_intersects(&region, |_| result = true);
+        result
+    }
+
+    pub fn add_dirty_region(&mut self, region: Rectangle) {
+        let mut whole = region.clone();
+
+        self.aabb
+            .drain_intersects(&region, |r| whole = whole.union(&r));
+
+        self.aabb.insert_ensured(whole);
     }
 
     pub fn reset_anything_changed(&mut self) -> bool {
@@ -93,7 +128,7 @@ impl<'a> Differ<'a> {
 
     pub fn reserve(&mut self) -> DifferReservation {
         if !self.granular {
-            return DifferReservation(self.idx)
+            return DifferReservation(self.idx);
         }
 
         let idx = self.idx;
@@ -103,7 +138,7 @@ impl<'a> Differ<'a> {
     }
 
     pub fn note(&mut self) -> DifferNote {
-        return DifferNote(self.idx)
+        return DifferNote(self.idx);
     }
 
     pub fn overwrite_from_note(&mut self, note: DifferNote, changed: bool) {
