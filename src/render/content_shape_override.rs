@@ -19,20 +19,18 @@ impl<T> ContentShapeOverride<T> {
 impl<T: Diffable> Diffable for ContentShapeOverride<T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let mut changed = self.shape != other.shape;
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        let changed = self.shape != other.shape;
 
         let r = differ.reserve();
 
-        changed |= if !changed {
-            self.subtree.diff_with(&other.subtree, differ)
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
-            true
-        };
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
+        }
 
         differ.commit(r, changed);
-        changed
     }
 }
 

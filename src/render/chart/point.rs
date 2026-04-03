@@ -18,10 +18,17 @@ pub struct PointRenderable<const N: usize> {
 impl<const N: usize> Diffable for PointRenderable<N> {
     const SIZE: usize = 1;
 
-    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
-        differ.push(self != other);
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
+        let changed = self != other;
 
-        self.frame != other.frame
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+
+        differ.push(changed || invalidated);
+
+        if changed {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

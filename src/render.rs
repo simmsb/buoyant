@@ -93,6 +93,17 @@ impl<'a> Differ<'a> {
         self.test_dirty_region(&bb)
     }
 
+    /// Returns true if any dirty region is contained within the renderable's bounding box.
+    /// This means the renderable's area was invalidated by something else.
+    pub fn check_aabb_contains<R: IntrinsicShape>(&self, renderable: &R) -> bool {
+        let Some(bb) = renderable.content_shape().bounding_box() else {
+            return false;
+        };
+        let mut result = false;
+        self.aabb.query_intersects(&bb, |_| result = true);
+        result
+    }
+
     pub fn dirty_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
@@ -100,6 +111,14 @@ impl<'a> Differ<'a> {
         self.add_dirty_region(bb);
     }
 
+    /// Removes all dirty regions completely contained within the renderable's bounding box.
+    /// This is called after determining that the renderable was invalidated by contained dirty regions.
+    pub fn remove_contained_aabb<R: IntrinsicShape>(&mut self, renderable: &R) {
+        let Some(bb) = renderable.content_shape().bounding_box() else {
+            return;
+        };
+        self.aabb.drain_contained(&bb, |_| {});
+    }
 
     pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
@@ -204,13 +223,10 @@ pub trait Diffable {
     /// function is also responsible for calling `diff_with` on any of its
     /// children.
     ///
-    /// The return value indicates whether this component changed in some way
-    /// which means the parent should also be invalid (e.g. because it moved or
-    /// resized).
-    ///
-    /// Therefore the children should be diffed first, and then the result of
-    /// this call ORed with whether the parent changed.
-    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool;
+    /// After diffing children, if any child was invalidated by dirty regions
+    /// contained within this node's bounding box, the contained dirty regions
+    /// should be removed and this node should be marked as invalidated.
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>);
 }
 
 pub trait AnimatedJoin {

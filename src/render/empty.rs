@@ -5,9 +5,7 @@ use super::{AnimatedJoin, AnimationDomain, ContentShape, Diffable, IntrinsicShap
 impl Diffable for () {
     const SIZE: usize = 0;
 
-    fn diff_with(&self, _other: &Self, _differ: &mut super::Differ<'_>) -> bool {
-        false
-    }
+    fn diff_with(&self, _other: &Self, _differ: &mut super::Differ<'_>) {}
 }
 
 impl AnimatedJoin for () {

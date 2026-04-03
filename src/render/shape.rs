@@ -88,24 +88,32 @@ impl<T> StrokedShape<T> {
     }
 }
 
-impl<T: Diffable> Diffable for StrokedShape<T> {
+impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let mut changed = self.line_width != other.line_width;
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        let changed = self.line_width != other.line_width;
 
         let r = differ.reserve();
 
-        changed |= if !changed {
-            self.shape.diff_with(&other.shape, differ)
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+
+        let child_invalid = if !changed {
+            self.shape.diff_with(&other.shape, differ);
+            false
         } else {
             differ.push_repeated(true, T::SIZE);
             true
         };
 
-        differ.commit(r, changed);
+        let invalid = invalidated || child_invalid;
 
-        changed
+        differ.commit(r, changed || invalid);
+
+        if changed || child_invalid {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

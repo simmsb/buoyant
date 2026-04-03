@@ -19,23 +19,32 @@ impl<T> Transform<T> {
     }
 }
 
-impl<T: Diffable> Diffable for Transform<T> {
+impl<T: Diffable + IntrinsicShape> Diffable for Transform<T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let mut changed = self.transform != other.transform;
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        let changed = self.transform != other.transform;
 
         let r = differ.reserve();
 
-        changed |= if !changed {
-            self.inner.diff_with(&other.inner, differ)
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+
+        let child_invalid = if !changed {
+            self.inner.diff_with(&other.inner, differ);
+            false
         } else {
             differ.push_repeated(true, T::SIZE);
             true
         };
 
-        differ.commit(r, changed);
-        changed
+        let invalid = invalidated || child_invalid;
+
+        differ.commit(r, changed || invalid);
+
+        if changed || child_invalid {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

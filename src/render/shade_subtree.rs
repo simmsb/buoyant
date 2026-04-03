@@ -20,20 +20,18 @@ impl<C, T> ShadeSubtree<C, T> {
 impl<C: PartialEq, T: Diffable> Diffable for ShadeSubtree<C, T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.style != other.style;
 
         let r = differ.reserve();
 
-        let invalid = if !changed {
-            self.subtree.diff_with(&other.subtree, differ)
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
-            true
-        };
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
+        }
 
-        differ.commit(r, changed || invalid);
-        invalid
+        differ.commit(r, changed);
     }
 }
 

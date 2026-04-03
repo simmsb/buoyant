@@ -11,15 +11,12 @@ use super::Diffable;
 impl<T: Diffable> Diffable for Option<T> {
     const SIZE: usize = T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let invalid = if let (Some(source), Some(target)) = (self, other) {
-            source.diff_with(target, differ)
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        if let (Some(source), Some(target)) = (self, other) {
+            source.diff_with(target, differ);
         } else {
             differ.push_repeated(true, T::SIZE);
-            true
-        };
-
-        invalid
+        }
     }
 }
 

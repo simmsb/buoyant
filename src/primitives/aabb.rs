@@ -89,11 +89,11 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
 
         // We need two free nodes for an insert: an internal node and a new leaf node.
         let internal_idx = self.alloc_node().ok_or("Tree is at maximum capacity")?;
-        let leaf_idx = self.alloc_node().unwrap_or_else(|| {
+        let Some(leaf_idx) = self.alloc_node() else {
             // Rollback if we can only get one node
             self.free_node(internal_idx);
-            panic!("Tree is at maximum capacity");
-        });
+            return Err("Tree is at maximum capacity");
+        };
 
         let target_leaf = self.choose_leaf(&rect);
         let parent_idx = self.nodes[target_leaf as usize].parent;
@@ -286,6 +286,74 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
                 _ => {}
             }
         }
+    }
+
+    /// Removes all rectangles completely contained within the given bounds.
+    /// Returns the union of all removed rectangles.
+    pub fn drain_contained<F: FnMut(Rectangle)>(
+        &mut self,
+        bounds: &Rectangle,
+        mut callback: F,
+    ) -> Option<Rectangle> {
+        let mut union_rect: Option<Rectangle> = None;
+
+        loop {
+            let mut target_rect = None;
+
+            if let Some(root_idx) = self.root {
+                let mut stack = [0u8; 64];
+                let mut top = 0;
+                stack[top] = root_idx as u8;
+                top += 1;
+
+                while top > 0 {
+                    top -= 1;
+                    let curr = stack[top];
+                    let node = &self.nodes[curr as usize];
+
+                    // Only process nodes that are fully contained within bounds
+                    if !bounds.contains_rect(&node.aabb) {
+                        continue;
+                    }
+
+                    match &node.node_type {
+                        NodeType::Leaf { item: _ } => {
+                            target_rect = Some(curr);
+                            break;
+                        }
+                        NodeType::Internal { left, right } => {
+                            stack[top] = *right;
+                            top += 1;
+                            stack[top] = *left;
+                            top += 1;
+                        }
+                        NodeType::Free { .. } => unreachable!(),
+                    }
+                }
+            }
+
+            let target = match target_rect {
+                Some(idx) => idx,
+                None => break,
+            };
+
+            let item = match &self.nodes[target as usize].node_type {
+                NodeType::Leaf { item } => item.clone(),
+                _ => unreachable!(),
+            };
+
+            let aabb = self.nodes[target as usize].aabb.clone();
+
+            union_rect = match &union_rect {
+                Some(u) => Some(u.union(&item)),
+                None => Some(item.clone()),
+            };
+
+            callback(item);
+            self.remove(&aabb);
+        }
+
+        union_rect
     }
 
     pub fn drain_intersects<F: FnMut(Rectangle)>(&mut self, bounds: &Rectangle, mut callback: F) {

@@ -22,23 +22,32 @@ impl<T> Container<T> {
     }
 }
 
-impl<T: Diffable> Diffable for Container<T> {
+impl<T: Diffable + IntrinsicShape> Diffable for Container<T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let mut changed = self.frame != other.frame;
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        let changed = self.frame != other.frame;
 
         let r = differ.reserve();
 
-        changed |= if !changed {
-            self.child.diff_with(&other.child, differ)
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+
+        let child_invalid = if !changed {
+            self.child.diff_with(&other.child, differ);
+            false
         } else {
             differ.push_repeated(true, T::SIZE);
             true
         };
 
-        differ.commit(r, changed);
-        changed
+        let invalid = invalidated || child_invalid;
+
+        differ.commit(r, changed || invalid);
+
+        if changed || child_invalid {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

@@ -20,23 +20,32 @@ impl<T> Offset<T> {
     }
 }
 
-impl<T: Diffable> Diffable for Offset<T> {
+impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
-        let mut changed = self.offset != other.offset;
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
+        let changed = self.offset != other.offset;
 
         let r = differ.reserve();
 
-        changed |= if !changed {
-            self.subtree.diff_with(&other.subtree, differ)
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+
+        let child_invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ);
+            false
         } else {
             differ.push_repeated(true, T::SIZE);
             true
         };
 
-        differ.commit(r, changed);
-        changed
+        let invalid = invalidated || child_invalid;
+
+        differ.commit(r, changed || invalid);
+
+        if changed || child_invalid {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

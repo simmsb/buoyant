@@ -297,7 +297,8 @@ where
         self.finalize_view();
 
         let bitslice = bitvec::slice::BitSlice::from_slice_mut(working_mem);
-        let mut differ = Differ::new(bitslice);
+        let mut aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
+        let mut differ = Differ::new(bitslice, &mut aabb);
 
         // maybe we need to clear the target with color if this returns that the root view is invalidated?
         let _ = self

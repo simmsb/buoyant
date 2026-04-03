@@ -27,13 +27,10 @@ impl<'a, T: ?Sized> Image<'a, T> {
 impl<T: ?Sized> Diffable for Image<'_, T> {
     const SIZE: usize = 1;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
             || !core::ptr::addr_eq(self.image as *const _, other.image as *const _);
         differ.push(changed);
-
-        // Naïve choice assuming we can't know if the image size changed
-        changed
     }
 }
 

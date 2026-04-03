@@ -34,7 +34,7 @@ pub struct BarRenderable<const N: usize> {
 impl<const N: usize> Diffable for BarRenderable<N> {
     const SIZE: usize = 1;
 
-    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
         let changed = self != other;
 
         let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
@@ -45,9 +45,6 @@ impl<const N: usize> Diffable for BarRenderable<N> {
             differ.dirty_aabb_self(self);
             differ.dirty_aabb_self(other);
         }
-
-        // if we moved or resized, then the parent also needs to re-render
-        changed
     }
 }
 

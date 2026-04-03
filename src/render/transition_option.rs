@@ -35,7 +35,7 @@ impl<Subtree, T> TransitionOption<Subtree, T> {
 impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> {
     const SIZE: usize = 1 + Subtree::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         if let (
             Self::Some {
                 subtree: this_subtree,
@@ -49,22 +49,19 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
             },
         ) = (self, other)
         {
-            let mut changed = this_size != other_size || this_transition != other_transition;
+            let changed = this_size != other_size || this_transition != other_transition;
             let r = differ.reserve();
 
-            changed |= if !changed {
-                this_subtree.diff_with(other_subtree, differ)
-            } else {
+            if changed {
                 differ.push_repeated(true, Subtree::SIZE);
-                true
-            };
+            } else {
+                this_subtree.diff_with(other_subtree, differ);
+            }
 
             differ.commit(r, changed);
-            changed
         } else {
             differ.push(true);
             differ.push_repeated(true, Subtree::SIZE);
-            true
         }
     }
 }

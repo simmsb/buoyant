@@ -28,18 +28,16 @@ macro_rules! define_branch {
         {
             const SIZE: usize = max!($($variant::SIZE),+);
 
-            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
                 match (self, other) {
                     $(
                         (Self::$variant(source), Self::$variant(target)) => {
-                            let invalid = source.diff_with(target, differ);
+                            source.diff_with(target, differ);
                             differ.push_repeated(false, Self::SIZE - $variant::SIZE);
-                            invalid
                         },
                     )+
                     (_, _) => {
                         differ.push_repeated(true, Self::SIZE);
-                        true
                     },
                 }
             }

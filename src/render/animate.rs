@@ -39,7 +39,7 @@ impl<T, U: PartialEq + Clone> Animate<T, U> {
 impl<T: Diffable, U: PartialEq + Clone> Diffable for Animate<T, U> {
     const SIZE: usize = 1 + T::SIZE;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.animation != other.animation
             || self.frame_time != other.frame_time
             || self.value != other.value
@@ -47,16 +47,15 @@ impl<T: Diffable, U: PartialEq + Clone> Diffable for Animate<T, U> {
 
         let r = differ.reserve();
 
-        let invalid = if !changed {
-            self.subtree.diff_with(&other.subtree, differ)
+        let child_invalid = if !changed {
+            self.subtree.diff_with(&other.subtree, differ);
+            false
         } else {
             differ.push_repeated(true, T::SIZE);
-            false
+            true
         };
 
-        differ.commit(r, changed || invalid);
-
-        invalid
+        differ.commit(r, changed || child_invalid);
     }
 }
 

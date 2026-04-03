@@ -71,7 +71,7 @@ impl<T: Clone, F: Font> Clone for Text<'_, T, F> {
 impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
     const SIZE: usize = 1;
 
-    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) -> bool {
+    fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
             || self.size != other.size
             || self.font as *const _ != other.font as *const _
@@ -81,11 +81,14 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
             || self.wrap != other.wrap
             ;
 
-        let invalid = self.size != other.size
-            || self.origin != other.origin;
+        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
 
-        differ.push(changed || invalid);
-        invalid
+        differ.push(changed || invalidated);
+
+        if changed {
+            differ.dirty_aabb_self(self);
+            differ.dirty_aabb_self(other);
+        }
     }
 }
 

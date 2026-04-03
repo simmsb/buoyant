@@ -7,31 +7,13 @@ use super::{
 
 macro_rules! impl_diffable_for_collections {
     ($(($n:tt, $type:ident)),+) => {
-        impl<$($type: crate::render::Diffable),+> crate::render::Diffable for ($($type),+) {
+        impl<$($type: crate::render::Diffable + crate::render::IntrinsicShape),+> crate::render::Diffable for ($($type),+) {
             const SIZE: usize = 0 $(+ $type::SIZE)+;
 
-            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
-                let initial_anything_changed = differ.reset_anything_changed();
-                let note = differ.note();
-                let mut size_so_far = 0;
-                let mut invalid = false;
-
+            fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
                 $({
-                    invalid |= self.$n.diff_with(&other.$n, differ);
-                    size_so_far += $type::SIZE;
-
-                    if invalid {
-                        differ.overwrite_from_note(note, true);
-                    }
-
-                    if invalid || differ.any_changed() {
-                        differ.push_repeated(true, Self::SIZE - size_so_far);
-                        return invalid;
-                    }
+                    self.$n.diff_with(&other.$n, differ);
                 })+
-
-                differ.restore_anything_changed(initial_anything_changed);
-                invalid
             }
         }
     };
@@ -120,24 +102,17 @@ mod impl_content_shape {
 
 /// For unsized slices we have no way to know the size, so we have to fall back
 /// to whether the entire list changed.
-impl<T: Diffable> Diffable for [T] {
+impl<T: Diffable + IntrinsicShape> Diffable for [T] {
     const SIZE: usize = 1;
 
-    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
-        let mut array = bitvec::array::BitArray::<[u8; 1]>::ZERO;
-        let mut child_differ = Differ::new(array.as_mut_bitslice());
-        let mut any_changed = false;
-        let mut any_invalid = false;
-
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) {
         let r = differ.reserve();
 
         for (a, b) in self.iter().zip(other) {
-            any_invalid |= a.diff_with(b, &mut child_differ);
-            any_changed |= child_differ.any_changed();
+            a.diff_with(b, differ);
         }
 
-        differ.commit(r, any_changed | any_invalid);
-        any_invalid
+        differ.commit(r, true);
     }
 }
 
@@ -149,34 +124,28 @@ impl<T: AnimatedJoin> AnimatedJoin for [T] {
     }
 }
 
-impl<T: Diffable, const N: usize> Diffable for [T; N] {
+impl<T: Diffable + IntrinsicShape, const N: usize> Diffable for [T; N] {
     const SIZE: usize = T::SIZE * N;
 
-    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
-        let mut any_invalid = false;
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) {
         for (a, b) in self.iter().zip(other) {
-            any_invalid |= a.diff_with(b, differ);
+            a.diff_with(b, differ);
         }
-
-        any_invalid
     }
 }
 
-impl<T: Diffable, const N: usize> Diffable for heapless::Vec<T, N> {
+impl<T: Diffable + IntrinsicShape, const N: usize> Diffable for heapless::Vec<T, N> {
     const SIZE: usize = T::SIZE * N;
 
-    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) -> bool {
-        let mut any_invalid = false;
+    fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) {
         for (a, b) in self.iter().zip(other) {
-            any_invalid |= a.diff_with(b, differ);
+            a.diff_with(b, differ);
         }
 
         // fill what wasn't compared in the slice with false
         let remainder = N - self.len().min(other.len());
 
         differ.push_repeated(false, T::SIZE * remainder);
-
-        any_invalid
     }
 }
 
@@ -412,9 +381,8 @@ mod render_order_tests {
     impl super::Diffable for OrderTracker {
         const SIZE: usize = 1;
 
-        fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) -> bool {
+        fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
             differ.push(self != other);
-            false
         }
     }
 
