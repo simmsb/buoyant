@@ -20,17 +20,19 @@ impl<T: Diffable> Diffable for ContentShapeOverride<T> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.shape != other.shape;
+        let changed = self.shape != other.shape
+            || differ.is_region_dirty(self) ;
 
         let r = differ.reserve();
-
-        if changed {
-            differ.push_repeated(true, T::SIZE);
-        } else {
-            self.subtree.diff_with(&other.subtree, differ);
-        }
-
         differ.commit(r, changed);
+
+        if !changed {
+            self.subtree.diff_with(&other.subtree, differ);
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
+        }
     }
 }
 

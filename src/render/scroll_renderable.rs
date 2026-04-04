@@ -55,31 +55,21 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.scroll_size != other.scroll_size || self.inner_size != other.inner_size;
+        let changed = self.scroll_size != other.scroll_size
+            || self.inner_size != other.inner_size
+            || differ.is_region_dirty(self);
 
         let r = differ.reserve();
+        differ.commit(r, changed);
 
-        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
 
-        let child_invalid = if !changed {
+        if !changed {
             self.inner.diff_with(&other.inner, differ);
-            false
         } else {
             differ.push_repeated(true, T::SIZE);
-            true
-        };
-
-        let invalid = invalidated || child_invalid;
-
-        differ.commit(r, changed || invalid);
-
-        if changed || child_invalid {
-            differ.dirty_aabb_self(self);
             differ.dirty_aabb_self(other);
-        }
-
-        // we set our bounds, so we know changes to the children don't
-        // invalidate any of our parents.
+            differ.drawn_aabb_self(self);
+        };
     }
 }
 

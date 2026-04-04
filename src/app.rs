@@ -55,6 +55,7 @@ where
     elapsed: Duration,
     requires_redraw: bool,
     requires_rebuild: bool,
+    requires_full_redraw: bool,
 }
 
 impl<V, S, F> core::fmt::Debug for App<V, S, F>
@@ -75,6 +76,7 @@ where
             .field("elapsed", &self.elapsed)
             .field("requires_redraw", &self.requires_redraw)
             .field("requires_rebuild", &self.requires_rebuild)
+            .field("requires_full_redraw", &self.requires_full_redraw)
             .finish_non_exhaustive()
     }
 }
@@ -127,6 +129,7 @@ where
             elapsed: Duration::default(),
             requires_redraw: true,
             requires_rebuild: false,
+            requires_full_redraw: true,
         }
     }
 
@@ -294,11 +297,17 @@ where
         V: View<C, S>,
         T: RenderTarget<ColorFormat = C>,
     {
+        if self.requires_full_redraw {
+            Self::render_animated(self, target, color);
+            self.requires_full_redraw = false;
+        }
+
         self.finalize_view();
 
         let bitslice = bitvec::slice::BitSlice::from_slice_mut(working_mem);
-        let mut aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
-        let mut differ = Differ::new(bitslice, &mut aabb);
+        let mut dirty_aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
+        let mut drawn_aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
+        let mut differ = Differ::new(bitslice, &mut dirty_aabb, &mut drawn_aabb);
 
         // maybe we need to clear the target with color if this returns that the root view is invalidated?
         let _ = self

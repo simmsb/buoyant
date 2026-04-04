@@ -49,19 +49,24 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
             },
         ) = (self, other)
         {
-            let changed = this_size != other_size || this_transition != other_transition;
+            let changed = this_size != other_size
+                || this_transition != other_transition
+                || differ.is_region_dirty(self);
             let r = differ.reserve();
-
-            if changed {
-                differ.push_repeated(true, Subtree::SIZE);
-            } else {
-                this_subtree.diff_with(other_subtree, differ);
-            }
-
             differ.commit(r, changed);
+
+            if !changed {
+                this_subtree.diff_with(other_subtree, differ);
+            } else {
+                differ.push_repeated(true, Subtree::SIZE);
+                differ.dirty_aabb_self(other);
+                differ.drawn_aabb_self(self);
+            }
         } else {
             differ.push(true);
             differ.push_repeated(true, Subtree::SIZE);
+            differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
     }
 }
@@ -84,11 +89,8 @@ impl<Subtree: AnimatedJoin + Clone, T: Transition> AnimatedJoin for TransitionOp
     }
 }
 
-impl<
-    Subtree: Render<Color> + Clone,
-    T: Transition + PartialEq,
-    Color: Interpolate + Copy,
-> Render<Color> for TransitionOption<Subtree, T>
+impl<Subtree: Render<Color> + Clone, T: Transition + PartialEq, Color: Interpolate + Copy>
+    Render<Color> for TransitionOption<Subtree, T>
 {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         if let Self::Some { subtree, .. } = self {

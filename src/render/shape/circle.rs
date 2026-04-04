@@ -38,14 +38,13 @@ impl Diffable for Circle {
     const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
-        let changed = self != other;
-        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+        let changed = self != other || differ.is_region_dirty(self);
 
-        differ.push(changed || invalidated);
+        differ.push(changed);
 
         if changed {
-            differ.dirty_aabb_self(self);
             differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
     }
 }

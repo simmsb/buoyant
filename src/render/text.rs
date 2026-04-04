@@ -79,15 +79,14 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
             || self.alignment != other.alignment
             || self.max_lines != other.max_lines
             || self.wrap != other.wrap
+            || differ.is_region_dirty(self)
             ;
 
-        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
-
-        differ.push(changed || invalidated);
+        differ.push(changed);
 
         if changed {
-            differ.dirty_aabb_self(self);
             differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
     }
 }

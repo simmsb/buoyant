@@ -1,6 +1,6 @@
 use crate::primitives::{Interpolate as _, Point};
 
-use super::{AnimatedJoin, AnimationDomain, Diffable};
+use super::{AnimatedJoin, AnimationDomain, Diffable, IntrinsicShape};
 
 #[non_exhaustive]
 #[derive(Debug, PartialEq, Eq)]
@@ -24,13 +24,21 @@ impl<'a, T: ?Sized> Image<'a, T> {
     }
 }
 
-impl<T: ?Sized> Diffable for Image<'_, T> {
+impl<T: ?Sized> Diffable for Image<'_, T>
+where
+    Self: IntrinsicShape,
+{
     const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
-            || !core::ptr::addr_eq(self.image as *const _, other.image as *const _);
+            || !core::ptr::addr_eq(self.image as *const _, other.image as *const _)
+            || differ.is_region_dirty(self);
         differ.push(changed);
+        if changed {
+            differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
+        }
     }
 }
 

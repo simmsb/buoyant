@@ -38,6 +38,8 @@ macro_rules! define_branch {
                     )+
                     (_, _) => {
                         differ.push_repeated(true, Self::SIZE);
+                        differ.dirty_aabb_self(other);
+                        differ.drawn_aabb_self(self);
                     },
                 }
             }

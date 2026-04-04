@@ -63,7 +63,8 @@ pub struct Differ<'a> {
     idx: usize,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
     anything_changed: bool,
-    aabb: &'a mut StaticAABBTree<20>,
+    dirty_aabb: &'a mut StaticAABBTree<20>,
+    drawn_aabb: &'a mut StaticAABBTree<20>,
 }
 
 #[derive(Debug)]
@@ -75,33 +76,31 @@ pub struct DifferNote(usize);
 impl<'a> Differ<'a> {
     pub fn new(
         array: &'a mut bitvec::slice::BitSlice<u8>,
-        aabb: &'a mut StaticAABBTree<20>,
+        dirty_aabb: &'a mut StaticAABBTree<20>,
+        drawn_aabb: &'a mut StaticAABBTree<20>,
     ) -> Self {
         Self {
             granular: true,
             idx: 0,
             array,
             anything_changed: false,
-            aabb,
+            dirty_aabb,
+            drawn_aabb,
         }
     }
 
-    pub fn check_aabb<R: IntrinsicShape>(&self, renderable: &R) -> bool {
+    pub fn is_region_dirty<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
-        self.test_dirty_region(&bb)
+        self.test_dirty_region(&bb) || self.test_drawn_region(&bb)
     }
 
-    /// Returns true if any dirty region is contained within the renderable's bounding box.
-    /// This means the renderable's area was invalidated by something else.
-    pub fn check_aabb_contains<R: IntrinsicShape>(&self, renderable: &R) -> bool {
+    pub fn is_region_overdrawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
-        let mut result = false;
-        self.aabb.query_intersects(&bb, |_| result = true);
-        result
+        self.test_drawn_region(&bb)
     }
 
     pub fn dirty_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
@@ -111,28 +110,42 @@ impl<'a> Differ<'a> {
         self.add_dirty_region(bb);
     }
 
-    /// Removes all dirty regions completely contained within the renderable's bounding box.
-    /// This is called after determining that the renderable was invalidated by contained dirty regions.
-    pub fn remove_contained_aabb<R: IntrinsicShape>(&mut self, renderable: &R) {
+    pub fn drawn_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
-        self.aabb.drain_contained(&bb, |_| {});
+        // TODO: this might need to clear dirty
+        self.add_drawn_region(bb);
     }
 
     pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
-        self.aabb.query_intersects(&region, |_| result = true);
+        self.dirty_aabb.query_intersects(&region, |_| result = true);
+        result
+    }
+
+    pub fn test_drawn_region(&self, region: &Rectangle) -> bool {
+        let mut result = false;
+        self.drawn_aabb.query_intersects(&region, |_| result = true);
         result
     }
 
     pub fn add_dirty_region(&mut self, region: Rectangle) {
         let mut whole = region.clone();
 
-        self.aabb
+        self.dirty_aabb
             .drain_intersects(&region, |r| whole = whole.union(&r));
 
-        self.aabb.insert_ensured(whole);
+        self.dirty_aabb.insert_ensured(whole);
+    }
+
+    pub fn add_drawn_region(&mut self, region: Rectangle) {
+        let mut whole = region.clone();
+
+        self.drawn_aabb
+            .drain_intersects(&region, |r| whole = whole.union(&r));
+
+        self.drawn_aabb.insert_ensured(whole);
     }
 
     pub fn reset_anything_changed(&mut self) -> bool {
@@ -213,7 +226,7 @@ impl<'a> Differ<'a> {
     }
 }
 
-pub trait Diffable {
+pub trait Diffable: IntrinsicShape {
     /// The number of differ slots needed for this node and all of its children.
     const SIZE: usize;
 

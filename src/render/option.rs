@@ -16,6 +16,8 @@ impl<T: Diffable> Diffable for Option<T> {
             source.diff_with(target, differ);
         } else {
             differ.push_repeated(true, T::SIZE);
+            differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
     }
 }

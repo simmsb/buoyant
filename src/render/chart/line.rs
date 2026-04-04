@@ -21,7 +21,7 @@ impl<const N: usize> Diffable for LineRenderable<N> {
 
     fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
         let changed = self != other;
-        let invalidated = differ.check_aabb(self) || differ.check_aabb(other);
+        let invalidated = differ.is_region_dirty(self) || differ.is_region_dirty(other);
 
         differ.push(changed || invalidated);
 

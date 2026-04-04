@@ -21,17 +21,21 @@ impl<T: Diffable, C: PartialEq> Diffable for HintBackground<T, C> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.color != other.color;
+        let changed = self.color != other.color
+            || differ.is_region_dirty(self)
+            ;
 
         let r = differ.reserve();
+        differ.commit(r, changed);
 
-        if changed {
-            differ.push_repeated(true, T::SIZE);
-        } else {
+        if !changed {
             self.subtree.diff_with(&other.subtree, differ);
+        } else {
+            differ.push_repeated(true, T::SIZE);
+            differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
 
-        differ.commit(r, changed);
     }
 }
 
