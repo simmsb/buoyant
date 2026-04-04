@@ -27,11 +27,10 @@ impl<T: Diffable + IntrinsicShape> Diffable for Container<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.frame != other.frame
-            || differ.is_region_dirty(self)
+            || differ.is_region_dirty_or_drawn(self)
             ;
 
         let r = differ.reserve();
-        differ.commit(r, changed);
 
         if !changed {
             self.child.diff_with(&other.child, differ);
@@ -40,6 +39,8 @@ impl<T: Diffable + IntrinsicShape> Diffable for Container<T> {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         };
+
+        differ.commit(r, changed || differ.is_region_dirty(self));
     }
 }
 

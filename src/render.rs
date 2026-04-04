@@ -63,8 +63,10 @@ pub struct Differ<'a> {
     idx: usize,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
     anything_changed: bool,
-    dirty_aabb: &'a mut StaticAABBTree<20>,
-    drawn_aabb: &'a mut StaticAABBTree<20>,
+    pub(crate) dirty_aabb: &'a mut StaticAABBTree<60>,
+    pub(crate) drawn_aabb: &'a mut StaticAABBTree<60>,
+    pub(crate) drawn_is_dirty: bool,
+    pub(crate) panic_test: bool,
 }
 
 #[derive(Debug)]
@@ -76,8 +78,8 @@ pub struct DifferNote(usize);
 impl<'a> Differ<'a> {
     pub fn new(
         array: &'a mut bitvec::slice::BitSlice<u8>,
-        dirty_aabb: &'a mut StaticAABBTree<20>,
-        drawn_aabb: &'a mut StaticAABBTree<20>,
+        dirty_aabb: &'a mut StaticAABBTree<60>,
+        drawn_aabb: &'a mut StaticAABBTree<60>,
     ) -> Self {
         Self {
             granular: true,
@@ -86,14 +88,23 @@ impl<'a> Differ<'a> {
             anything_changed: false,
             dirty_aabb,
             drawn_aabb,
+            drawn_is_dirty: true,
+            panic_test: false,
         }
+    }
+
+    pub fn is_region_dirty_or_drawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
+        let Some(bb) = renderable.content_shape().bounding_box() else {
+            return false;
+        };
+        self.test_dirty_region(&bb) || (self.drawn_is_dirty && self.test_drawn_region(&bb))
     }
 
     pub fn is_region_dirty<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
-        self.test_dirty_region(&bb) || self.test_drawn_region(&bb)
+        self.test_dirty_region(&bb)
     }
 
     pub fn is_region_overdrawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
@@ -114,7 +125,6 @@ impl<'a> Differ<'a> {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
-        // TODO: this might need to clear dirty
         self.add_drawn_region(bb);
     }
 
@@ -133,8 +143,17 @@ impl<'a> Differ<'a> {
     pub fn add_dirty_region(&mut self, region: Rectangle) {
         let mut whole = region.clone();
 
+        println!("Add dirty region: {region}");
+        // if self.panic_test {
+        //     panic!("Nop");
+        // }
+
+        // if region.size == crate::primitives::Size::new(320, 240) {
+        //     panic!("Nop");
+        // }
+
         self.dirty_aabb
-            .drain_intersects(&region, |r| whole = whole.union(&r));
+            .drain_contained(&region, |r| whole = whole.union(&r));
 
         self.dirty_aabb.insert_ensured(whole);
     }
@@ -142,8 +161,12 @@ impl<'a> Differ<'a> {
     pub fn add_drawn_region(&mut self, region: Rectangle) {
         let mut whole = region.clone();
 
+        println!("Add drawn region: {region}");
+
+        self.dirty_aabb.drain_contained(&region, |_| {});
+
         self.drawn_aabb
-            .drain_intersects(&region, |r| whole = whole.union(&r));
+            .drain_contained(&region, |r| whole = whole.union(&r));
 
         self.drawn_aabb.insert_ensured(whole);
     }
@@ -173,25 +196,34 @@ impl<'a> Differ<'a> {
         return DifferNote(self.idx);
     }
 
-    pub fn overwrite_from_note(&mut self, note: DifferNote, changed: bool) {
-        println!("Overwrite from note {} to {}", note.0, self.idx);
-        self.anything_changed |= changed;
-        self.array[note.0..self.idx].fill(changed);
+    pub fn restore(&mut self, note: DifferNote) {
+        self.idx = note.0;
     }
 
+    // pub fn overwrite_from_note(&mut self, note: DifferNote, changed: bool) {
+
+    //     println!("Overwrite from note {} to {}", note.0, self.idx);
+    //     self.anything_changed |= changed;
+    //     self.array[note.0..self.idx].fill(changed);
+    // }
+
     pub fn commit(&mut self, reservation: DifferReservation, changed: bool) {
+        if !changed { return; }
+
         self.anything_changed |= changed;
         self.array.set(reservation.0, changed);
     }
 
     pub fn push(&mut self, changed: bool) {
         self.anything_changed |= changed;
-        if !self.granular {
+        if !self.granular && changed {
             self.array.set(0, changed);
         }
 
         let idx = self.idx;
         self.idx += 1;
+
+        if !changed { return; }
 
         self.array.set(idx, changed);
     }

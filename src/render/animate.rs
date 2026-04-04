@@ -44,10 +44,9 @@ impl<T: Diffable, U: PartialEq + Clone> Diffable for Animate<T, U> {
             || self.frame_time != other.frame_time
             || self.value != other.value
             || self.is_partial != other.is_partial
-            || differ.is_region_dirty(self);
+            || differ.is_region_dirty_or_drawn(self);
 
         let r = differ.reserve();
-        differ.commit(r, changed);
 
         if !changed {
             self.subtree.diff_with(&other.subtree, differ);
@@ -56,6 +55,8 @@ impl<T: Diffable, U: PartialEq + Clone> Diffable for Animate<T, U> {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         }
+
+        differ.commit(r, changed || differ.is_region_dirty(self));
     }
 }
 

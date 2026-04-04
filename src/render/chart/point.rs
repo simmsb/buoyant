@@ -21,7 +21,7 @@ impl<const N: usize> Diffable for PointRenderable<N> {
     fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
         let changed = self != other;
 
-        let invalidated = differ.is_region_dirty(self) || differ.is_region_dirty(other);
+        let invalidated = differ.is_region_dirty_or_drawn(self) || differ.is_region_dirty_or_drawn(other);
 
         differ.push(changed || invalidated);
 

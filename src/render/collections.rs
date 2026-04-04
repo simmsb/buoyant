@@ -11,9 +11,21 @@ macro_rules! impl_diffable_for_collections {
             const SIZE: usize = 0 $(+ $type::SIZE)+;
 
             fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
+                let note = differ.note();
+
                 $({
                     self.$n.diff_with(&other.$n, differ);
                 })+
+
+                differ.restore(note);
+                let prior_drawn_is_dirty = differ.drawn_is_dirty;
+                differ.drawn_is_dirty = false;
+
+                $({
+                    self.$n.diff_with(&other.$n, differ);
+                })+
+
+                differ.drawn_is_dirty = prior_drawn_is_dirty;
             }
         }
     };
@@ -106,13 +118,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for [T] {
     const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) {
-        let r = differ.reserve();
+        differ.granular = false;
 
         for (a, b) in self.iter().zip(other) {
             a.diff_with(b, differ);
         }
 
-        differ.commit(r, true);
+        differ.granular = true;
     }
 }
 

@@ -79,7 +79,7 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
             || self.alignment != other.alignment
             || self.max_lines != other.max_lines
             || self.wrap != other.wrap
-            || differ.is_region_dirty(self)
+            || differ.is_region_dirty_or_drawn(self)
             ;
 
         differ.push(changed);

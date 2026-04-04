@@ -70,6 +70,16 @@ mod color {
     pub const FOREGROUND_SECONDARY: Space = Space::CSS_LIGHT_SLATE_GRAY;
 }
 
+const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
+where
+    V: ViewLayout<S>,
+    V::Renderables: buoyant::render::Diffable,
+{
+    use buoyant::render::Diffable;
+
+    V::Renderables::SIZE.div_ceil(8)
+}
+
 fn main() {
     let size = Size::new(480, 320);
     let mut display: SimulatorDisplay<color::Space> = SimulatorDisplay::new(size);
@@ -87,6 +97,9 @@ fn main() {
 
     // Acquire initial focus
     app.focus_forward();
+
+
+    let mut diffing_mem = [0u8; root_view_differ_size(root_view)];
 
     // Main event loop
     loop {
@@ -109,7 +122,7 @@ fn main() {
         // Only render if active animation was reported or redraw needed
         if app.should_redraw() || target.clear_animation_status() {
             // Render animated transition between source and target trees
-            app.render_animated(&mut target, &color::Space::WHITE);
+            app.render_animated_diffed(&mut target, &color::Space::WHITE, &mut diffing_mem, false);
 
             // Draw focus overlay
             app.draw_focus_overlay(&mut target, color::Space::CSS_YELLOW, 1);
@@ -117,7 +130,7 @@ fn main() {
             // Send to the display
             window.update(target.display());
             // Clear for the next frame
-            target.clear(color::Space::BLACK);
+            // target.clear(color::Space::BLACK);
         } else {
             // limit polling for updates to ~30 fps when idle
             std::thread::sleep(Duration::from_millis(33));

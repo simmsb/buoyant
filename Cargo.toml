@@ -34,6 +34,7 @@ rusttype-fonts = [
   "dep:embedded-ttf",
 ]
 crossterm = ["std", "dep:crossterm"]
+color-backtrace = ["dep:color-backtrace"]
 
 [dependencies]
 crossterm = { version = ">=0.28.0, <0.30.0", optional = true }
@@ -55,6 +56,8 @@ embedded-ttf = { version = "^0.2.2", optional = true, default-features = false, 
 ] }
 rusttype = { version = "^0.9.3", optional = true }
 bitvec = { version = "1.0.1", default-features = false }
+display_as_debug = "0.5.1"
+color-backtrace = { version = "0.7.2", optional = true }
 
 [dev-dependencies]
 tinytga = "^0.5"
@@ -71,7 +74,7 @@ workspace = true
 
 [[example]]
 name = "advanced_input"
-required-features = ["embedded-graphics", "embedded-graphics-simulator"]
+required-features = ["embedded-graphics", "embedded-graphics-simulator", "color-backtrace"]
 
 [[example]]
 name = "crossterm"

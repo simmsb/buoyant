@@ -21,10 +21,9 @@ impl<T: Diffable> Diffable for ContentShapeOverride<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.shape != other.shape
-            || differ.is_region_dirty(self) ;
+            || differ.is_region_dirty_or_drawn(self) ;
 
         let r = differ.reserve();
-        differ.commit(r, changed);
 
         if !changed {
             self.subtree.diff_with(&other.subtree, differ);
@@ -33,6 +32,8 @@ impl<T: Diffable> Diffable for ContentShapeOverride<T> {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         }
+
+        differ.commit(r, changed || differ.is_region_dirty(self));
     }
 }
 

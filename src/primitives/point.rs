@@ -11,6 +11,12 @@ pub struct Point {
     pub y: i32,
 }
 
+impl core::fmt::Display for Point {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "[{},{}]", self.x, self.y)
+    }
+}
+
 impl Point {
     #[must_use]
     pub const fn new(x: i32, y: i32) -> Self {

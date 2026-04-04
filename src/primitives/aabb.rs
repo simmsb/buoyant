@@ -21,12 +21,22 @@ const DUMMY_NODE: Node = Node {
     node_type: NodeType::Free { next_free: None },
 };
 
-#[derive(Debug)]
 pub struct StaticAABBTree<const CAP: usize> {
     nodes: [Node; CAP],
     root: Option<u8>,
     free_head: Option<u8>,
     size: u8,
+}
+
+impl<const CAP: usize> core::fmt::Debug for StaticAABBTree<CAP> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_list()
+            .entries(self.nodes.iter().filter_map(|n| match &n.node_type {
+                NodeType::Leaf { item } => Some(display_as_debug::wrap::DisplayAsDebug(item)),
+                _ => None,
+            }))
+            .finish()
+    }
 }
 
 impl<const CAP: usize> StaticAABBTree<CAP> {

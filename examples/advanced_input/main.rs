@@ -149,6 +149,8 @@ where
 }
 
 fn main() {
+    color_backtrace::install();
+
     let size = Size::new(320, 240);
     let mut display: SimulatorDisplay<Rgb888> = SimulatorDisplay::new(size);
     let mut target = EmbeddedGraphicsRenderTarget::new_hinted(&mut display, PALETTE.black());
@@ -178,6 +180,7 @@ fn main() {
     app.focus_forward();
 
     let mut diffing_mem = [0u8; root_view_differ_size(root_view)];
+    let mut n = 0;
 
     // Main event loop
     loop {
@@ -225,7 +228,8 @@ fn main() {
         // Only render if active animation was reported or redraw needed
         if app.should_redraw() || target.clear_animation_status() {
             // Render animated transition between source and target trees
-            app.render_animated_diffed(&mut target, &PALETTE.white(), &mut diffing_mem);
+            app.render_animated_diffed(&mut target, &PALETTE.white(), &mut diffing_mem, n > 10);
+            n += 1;
 
             // Draw focus overlay
             if std::env::var("DEBUG_FOCUS").is_ok() {

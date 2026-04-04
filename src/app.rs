@@ -293,6 +293,7 @@ where
         target: &mut T,
         color: &C,
         working_mem: &mut [u8],
+        panic_test: bool,
     ) where
         V: View<C, S>,
         T: RenderTarget<ColorFormat = C>,
@@ -300,24 +301,31 @@ where
         if self.requires_full_redraw {
             Self::render_animated(self, target, color);
             self.requires_full_redraw = false;
+            return;
         }
 
         self.finalize_view();
 
         let bitslice = bitvec::slice::BitSlice::from_slice_mut(working_mem);
-        let mut dirty_aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
-        let mut drawn_aabb = crate::primitives::aabb::StaticAABBTree::<20>::new();
+        bitslice.fill(false);
+        let mut dirty_aabb = crate::primitives::aabb::StaticAABBTree::new();
+        let mut drawn_aabb = crate::primitives::aabb::StaticAABBTree::new();
         let mut differ = Differ::new(bitslice, &mut dirty_aabb, &mut drawn_aabb);
+        differ.panic_test = panic_test;
+
+        println!("FRAME START!");
 
         // maybe we need to clear the target with color if this returns that the root view is invalidated?
         let _ = self
             .trees
-            .source()
-            .diff_with(self.trees.target(), &mut differ);
+            .target()
+            .diff_with(self.trees.source(), &mut differ);
 
         differ.reset();
 
         println!("{}", differ.array);
+        println!("dirty: {:?}", differ.dirty_aabb);
+        println!("drawn: {:?}", differ.drawn_aabb);
 
         let domain = AnimationDomain::top_level(self.elapsed);
         Render::render_animated_diffed(

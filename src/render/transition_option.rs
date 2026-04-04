@@ -51,9 +51,8 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
         {
             let changed = this_size != other_size
                 || this_transition != other_transition
-                || differ.is_region_dirty(self);
+                || differ.is_region_dirty_or_drawn(self);
             let r = differ.reserve();
-            differ.commit(r, changed);
 
             if !changed {
                 this_subtree.diff_with(other_subtree, differ);
@@ -62,6 +61,8 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
                 differ.dirty_aabb_self(other);
                 differ.drawn_aabb_self(self);
             }
+
+            differ.commit(r, changed || differ.is_region_dirty(self));
         } else {
             differ.push(true);
             differ.push_repeated(true, Subtree::SIZE);

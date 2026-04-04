@@ -22,11 +22,10 @@ impl<T: Diffable, C: PartialEq> Diffable for HintBackground<T, C> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.color != other.color
-            || differ.is_region_dirty(self)
+            || differ.is_region_dirty_or_drawn(self)
             ;
 
         let r = differ.reserve();
-        differ.commit(r, changed);
 
         if !changed {
             self.subtree.diff_with(&other.subtree, differ);
@@ -36,6 +35,7 @@ impl<T: Diffable, C: PartialEq> Diffable for HintBackground<T, C> {
             differ.drawn_aabb_self(self);
         }
 
+        differ.commit(r, changed || differ.is_region_dirty(self));
     }
 }
 

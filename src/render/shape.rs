@@ -93,12 +93,10 @@ impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.line_width != other.line_width
-            || differ.is_region_dirty(self)
+            || differ.is_region_dirty_or_drawn(self)
             ;
 
         let r = differ.reserve();
-        differ.commit(r, changed);
-
         if !changed {
             self.shape.diff_with(&other.shape, differ);
         } else {
@@ -106,6 +104,8 @@ impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         };
+
+        differ.commit(r, changed || differ.is_region_dirty(self));
     }
 }
 

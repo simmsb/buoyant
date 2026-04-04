@@ -11,6 +11,12 @@ pub struct Rectangle {
     pub size: Size,
 }
 
+impl core::fmt::Display for Rectangle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}@{}", self.origin, self.size)
+    }
+}
+
 impl Rectangle {
     #[must_use]
     pub const fn new(origin: Point, size: Size) -> Self {
