@@ -36,43 +36,49 @@ impl<Subtree: Diffable, T: Transition + PartialEq> Diffable for TransitionOption
     const SIZE: usize = 1 + Subtree::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        if let (
-            Self::Some {
-                subtree: this_subtree,
-                size: this_size,
-                transition: this_transition,
-            },
-            Self::Some {
-                subtree: other_subtree,
-                size: other_size,
-                transition: other_transition,
-            },
-        ) = (self, other)
-        {
-            let changed = this_size != other_size
-                || this_transition != other_transition
-                || differ.is_region_dirty(self);
-            let r = differ.reserve();
+        match (self, other) {
+            (
+                Self::Some {
+                    subtree: this_subtree,
+                    size: this_size,
+                    transition: this_transition,
+                },
+                Self::Some {
+                    subtree: other_subtree,
+                    size: other_size,
+                    transition: other_transition,
+                },
+            ) => {
+                let changed = this_size != other_size
+                    || this_transition != other_transition
+                    || differ.is_region_dirty(self);
+                let r = differ.reserve();
 
-            let offset = this_transition.transform(Direction::Out, 0, *this_size);
-            let transform = differ.offset(offset);
+                let offset = this_transition.transform(Direction::Out, 0, *this_size);
+                let transform = differ.offset(offset);
 
-            if !changed {
-                this_subtree.diff_with(other_subtree, differ);
-            } else {
+                if !changed {
+                    this_subtree.diff_with(other_subtree, differ);
+                } else {
+                    differ.push_repeated(true, Subtree::SIZE);
+                    differ.dirty_aabb_self(other);
+                    differ.drawn_aabb_self(self);
+                }
+
+                differ.restore_transform(transform);
+
+                differ.commit(r, changed || differ.is_region_dirty(self));
+            }
+            (Self::None, Self::None) => {
+                differ.push(false);
+                differ.push_repeated(false, Subtree::SIZE);
+            }
+            _ => {
+                differ.push(true);
                 differ.push_repeated(true, Subtree::SIZE);
                 differ.dirty_aabb_self(other);
                 differ.drawn_aabb_self(self);
             }
-
-            differ.restore_transform(transform);
-
-            differ.commit(r, changed || differ.is_region_dirty(self));
-        } else {
-            differ.push(true);
-            differ.push_repeated(true, Subtree::SIZE);
-            differ.dirty_aabb_self(other);
-            differ.drawn_aabb_self(self);
         }
     }
 }

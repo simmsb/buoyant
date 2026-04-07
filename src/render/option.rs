@@ -12,16 +12,21 @@ impl<T: Diffable> Diffable for Option<T> {
     const SIZE: usize = T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        if let (Some(source), Some(target)) = (self, other) {
-            source.diff_with(target, differ);
-        } else {
-            differ.push_repeated(true, T::SIZE);
-            differ.dirty_aabb_self(other);
-            differ.drawn_aabb_self(self);
+        match (self, other) {
+            (Some(source), Some(target)) => {
+                source.diff_with(target, differ);
+            }
+            (Self::None, _) => {
+                differ.push_repeated(false, T::SIZE);
+            }
+            _ => {
+                differ.push_repeated(true, T::SIZE);
+                differ.dirty_aabb_self(other);
+                differ.drawn_aabb_self(self);
+            }
         }
     }
 }
-
 
 impl<T: AnimatedJoin> AnimatedJoin for Option<T> {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
@@ -68,7 +73,9 @@ impl<T: Render<Color>, Color: Copy> Render<Color> for Option<T> {
             (Some(source), Some(target)) => {
                 T::render_animated_diffed(render_target, source, target, style, domain, differ);
             }
-            (_, None) => {}
+            (_, None) => {
+                differ.ignore(T::SIZE);
+            }
             (None, Some(target)) => {
                 target.stamp_background(render_target);
                 target.render(render_target, style);

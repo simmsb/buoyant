@@ -329,8 +329,8 @@ where
             let loc = differ.meta.get(&idx).map(|s| s.as_str()).unwrap_or("");
             println!("({idx}): {value} @ {loc}")
         }
-        println!("dirty: {:?}", differ.dirty_aabb);
-        println!("drawn: {:?}", differ.drawn_aabb);
+        println!("dirty: {}", differ.dirty_aabb);
+        println!("drawn: {}", differ.drawn_aabb);
 
         let domain = AnimationDomain::top_level(self.elapsed);
         Render::render_animated_diffed(

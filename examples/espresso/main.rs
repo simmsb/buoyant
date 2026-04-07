@@ -121,11 +121,16 @@ fn main() {
                 app.send(event);
             });
 
+        n += 1;
+        if n % 10 == 0 {
+            app.state_mut().n = n / 10;
+        }
+
         // Only render if active animation was reported or redraw needed
         if app.should_redraw() || target.clear_animation_status() {
             // n += 1;
             // Render animated transition between source and target trees
-            app.render_animated_diffed(&mut target, &color::Space::WHITE, &mut diffing_mem, n > 50);
+            app.render_animated_diffed(&mut target, &color::Space::WHITE, &mut diffing_mem, false);
 
             // Draw focus overlay
             app.draw_focus_overlay(&mut target, color::Space::CSS_YELLOW, 1);
@@ -133,7 +138,7 @@ fn main() {
             // Send to the display
             window.update(target.display());
             // Clear for the next frame
-            target.clear(color::Space::RED);
+            // target.clear(color::Space::RED);
         } else {
             // limit polling for updates to ~30 fps when idle
             std::thread::sleep(Duration::from_millis(33));
@@ -157,6 +162,7 @@ struct CleanSettings {
 
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 struct AppState {
+    pub n: u64,
     pub tab: Tab,
     pub stop_on_weight: bool,
     pub auto_off: bool,

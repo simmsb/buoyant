@@ -181,6 +181,10 @@ impl<'a> Differ<'a> {
         let mut whole = region.clone();
 
         println!("Add dirty region: {region}");
+        // if region.origin == Point::new(74, -1) {
+        //     panic!("Huh");
+        // }
+
         if self.panic_test {
             panic!("Nop");
         }
@@ -192,7 +196,7 @@ impl<'a> Differ<'a> {
         self.dirty_aabb
             .drain_contained(&region, |r| whole = whole.union(&r));
 
-        self.dirty_aabb.insert_ensured(whole);
+        self.dirty_aabb.insert(whole);
     }
 
     pub fn add_drawn_region(&mut self, region: Rectangle) {
@@ -201,13 +205,13 @@ impl<'a> Differ<'a> {
         println!("Add drawn region: {region}");
 
         self.dirty_aabb.drain_contained(&region, |r| {
-            println!("Removing drawn-over dirty: {}", r);
+            // println!("Removing drawn-over dirty: {}", r);
         });
 
         self.drawn_aabb
             .drain_contained(&region, |r| whole = whole.union(&r));
 
-        self.drawn_aabb.insert_ensured(whole);
+        self.drawn_aabb.insert(whole);
     }
 
     pub fn reset_anything_changed(&mut self) -> bool {
@@ -321,8 +325,10 @@ impl<'a> Differ<'a> {
 
     #[track_caller]
     pub fn push_repeated(&mut self, changed: bool, n: usize) {
-        let loc = Location::caller();
-        self.meta.insert(self.idx, format!("{}:{} (repeated {})", loc.file(), loc.line(), n));
+        if changed {
+            let loc = Location::caller();
+            self.meta.insert(self.idx, format!("{}:{} (repeated {})", loc.file(), loc.line(), n));
+        }
         // println!("Push repeated: {n} of {}/{}", self.idx, self.array.len());
         for _ in 0..n {
             self.push_inner(changed, false);
@@ -337,10 +343,12 @@ impl<'a> Differ<'a> {
         let idx = self.idx;
         self.idx += 1;
 
-        self.array[idx]
+        let r = self.array[idx];
+        r
     }
 
     pub fn ignore(&mut self, n: usize) {
+        // println!("Differ ignore {} +{}", self.idx, n);
         self.idx += n;
     }
 

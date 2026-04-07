@@ -1,240 +1,295 @@
 use super::geometry::Rectangle;
 
-#[derive(Clone, Debug)]
-enum NodeType {
-    Free { next_free: Option<u8> },
-    Leaf { item: Rectangle },
-    Internal { left: u8, right: u8 },
-}
-
-#[derive(Clone, Debug)]
-struct Node {
-    aabb: Rectangle,
-    parent: Option<u8>,
-    node_type: NodeType,
-}
-
-const DUMMY_RECT: Rectangle = Rectangle::from_bounds(0, 0, 0, 0);
-const DUMMY_NODE: Node = Node {
-    aabb: DUMMY_RECT,
-    parent: None,
-    node_type: NodeType::Free { next_free: None },
-};
-
+#[derive(Debug)]
 pub struct StaticAABBTree<const CAP: usize> {
     nodes: [Node; CAP],
-    root: Option<u8>,
-    free_head: Option<u8>,
-    size: u8,
+    root: u16,
+    free_head: u16,
 }
 
-impl<const CAP: usize> core::fmt::Debug for StaticAABBTree<CAP> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_list()
-            .entries(self.nodes.iter().filter_map(|n| match &n.node_type {
-                NodeType::Leaf { item } => Some(display_as_debug::wrap::DisplayAsDebug(item)),
-                _ => None,
-            }))
-            .finish()
+impl<const CAP: usize> core::fmt::Display for StaticAABBTree<CAP> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if self.root == NULL_NODE {
+            return writeln!(f, "<Empty Tree>");
+        }
+
+        // Recursive helper to format lines using a bitmask for indentation
+        fn print_node<const C: usize>(
+            tracker: &StaticAABBTree<C>,
+            node_idx: u16,
+            f: &mut core::fmt::Formatter<'_>,
+            depth: usize,
+            is_last: bool,
+            path_mask: u64,
+        ) -> core::fmt::Result {
+            if node_idx == NULL_NODE {
+                return Ok(());
+            }
+
+            let node = &tracker.nodes[node_idx as usize];
+            let is_leaf = tracker.is_leaf(node_idx);
+
+            // Print the tree structure branches based on depth and ancestry mask
+            if depth > 0 {
+                for i in 0..(depth - 1) {
+                    // Check if the ancestor at this depth level requires a continuation line
+                    if (path_mask & (1_u64.wrapping_shl(i as u32))) != 0 {
+                        write!(f, "│   ")?;
+                    } else {
+                        write!(f, "    ")?;
+                    }
+                }
+
+                if is_last {
+                    write!(f, "└── ")?;
+                } else {
+                    write!(f, "├── ")?;
+                }
+            }
+
+            let label = if depth == 0 {
+                "Root"
+            } else if is_leaf {
+                "Leaf"
+            } else {
+                "Node"
+            };
+
+            writeln!(f, "{} {}", label, node.rect)?;
+
+            // Recurse for children, updating the path bitmask
+            if !is_leaf {
+                // Left child is never the last child. Ancestors below will need a '|' line.
+                let left_mask = path_mask | 1_u64.wrapping_shl(depth as u32);
+                print_node(tracker, node.left, f, depth + 1, false, left_mask)?;
+
+                // Right child is the last child. Ancestors below won't need a '|' line.
+                let right_mask = path_mask & !1_u64.wrapping_shl(depth as u32);
+                print_node(tracker, node.right, f, depth + 1, true, right_mask)?;
+            }
+
+            Ok(())
+        }
+
+        print_node(self, self.root, f, 0, true, 0)
     }
 }
 
+const NULL_NODE: u16 = u16::MAX;
+
+#[derive(Clone, Debug)]
+struct Node {
+    rect: Rectangle,
+    left: u16,
+    right: u16,
+    parent: u16,
+}
+
+impl Node {
+    const EMPTY: Self = Self {
+        rect: Rectangle::from_bounds(0, 0, 0, 0),
+        left: NULL_NODE,
+        right: NULL_NODE,
+        parent: NULL_NODE,
+    };
+}
+
 impl<const CAP: usize> StaticAABBTree<CAP> {
+    /// Creates a new damage tracker with an initialized internal free-list.
     pub const fn new() -> Self {
-        let mut nodes = [DUMMY_NODE; CAP];
-        let mut i = 0u8;
-        while i < CAP as u8 {
-            let next = if i + 1 < CAP as u8 { Some(i + 1) } else { None };
-            nodes[i as usize].node_type = NodeType::Free { next_free: next };
-            i += 1;
+        let mut nodes = [Node::EMPTY; CAP];
+        let mut free_head = NULL_NODE;
+
+        if CAP > 0 {
+            free_head = 0;
+            let mut i = 0;
+            while i < CAP - 1 {
+                nodes[i].left = (i + 1) as u16;
+                i += 1;
+            }
+            nodes[CAP - 1].left = NULL_NODE;
         }
 
         Self {
             nodes,
-            root: None,
-            free_head: if CAP > 0 { Some(0) } else { None },
-            size: 0,
+            root: NULL_NODE,
+            free_head,
         }
     }
 
-    pub fn len(&self) -> u8 {
-        self.size
-    }
-
-    pub fn is_empty(&self) -> bool {
-        self.size == 0
-    }
-
-    fn alloc_node(&mut self) -> Option<u8> {
-        if let Some(idx) = self.free_head
-            && let NodeType::Free { next_free } = self.nodes[idx as usize].node_type
-        {
-            self.free_head = next_free;
-            return Some(idx);
-        }
-        None
-    }
-
-    fn free_node(&mut self, idx: u8) {
-        self.nodes[idx as usize].node_type = NodeType::Free {
-            next_free: self.free_head,
-        };
-        self.nodes[idx as usize].parent = None;
-        self.free_head = Some(idx);
-    }
-
-    /// Inserts a new rectangle into the tree in O(log N) time.
-    pub fn insert(&mut self, rect: Rectangle) -> Result<(), &'static str> {
-        if self.root.is_none() {
-            let r = self.alloc_node().ok_or("Tree is at maximum capacity")?;
-            self.nodes[r as usize] = Node {
-                aabb: rect.clone(),
-                parent: None,
-                node_type: NodeType::Leaf { item: rect },
-            };
-            self.root = Some(r);
-            self.size += 1;
-            return Ok(());
-        }
-
-        // We need two free nodes for an insert: an internal node and a new leaf node.
-        let internal_idx = self.alloc_node().ok_or("Tree is at maximum capacity")?;
-        let Some(leaf_idx) = self.alloc_node() else {
-            // Rollback if we can only get one node
-            self.free_node(internal_idx);
-            return Err("Tree is at maximum capacity");
-        };
-
-        let target_leaf = self.choose_leaf(&rect);
-        let parent_idx = self.nodes[target_leaf as usize].parent;
-
-        // Setup the new leaf
-        self.nodes[leaf_idx as usize] = Node {
-            aabb: rect.clone(),
-            parent: Some(internal_idx),
-            node_type: NodeType::Leaf { item: rect.clone() },
-        };
-
-        // Setup the new internal node, taking the place of the old leaf
-        self.nodes[internal_idx as usize] = Node {
-            aabb: self.nodes[target_leaf as usize].aabb.union(&rect),
-            parent: parent_idx,
-            node_type: NodeType::Internal {
-                left: target_leaf,
-                right: leaf_idx,
-            },
-        };
-
-        self.nodes[target_leaf as usize].parent = Some(internal_idx);
-
-        if let Some(p) = parent_idx {
-            if let NodeType::Internal { left, right } = &mut self.nodes[p as usize].node_type {
-                if *left == target_leaf {
-                    *left = internal_idx;
-                } else if *right == target_leaf {
-                    *right = internal_idx;
-                }
+    /// Inserts a new rectangle. If capacity is hit, it defensively unions with the
+    /// closest leaf to avoid allocation failure.
+    pub fn insert(&mut self, rect: Rectangle) {
+        if self.root == NULL_NODE {
+            if let Some(node_idx) = self.allocate() {
+                self.nodes[node_idx as usize] = Node {
+                    rect,
+                    left: NULL_NODE,
+                    right: NULL_NODE,
+                    parent: NULL_NODE,
+                };
+                self.root = node_idx;
             }
-        } else {
-            self.root = Some(internal_idx);
+            return;
         }
 
-        self.sync_hierarchy(internal_idx);
-        self.size += 1;
-        Ok(())
-    }
+        // 1. Find best leaf via minimal area expansion
+        let mut curr = self.root;
+        while !self.is_leaf(curr) {
+            let left = self.nodes[curr as usize].left;
+            let right = self.nodes[curr as usize].right;
 
-    /// Removes a specific rectangle from the tree in O(log N) time.
-    pub fn remove(&mut self, rect: &Rectangle) -> bool {
-        let target = match self.find_exact(rect) {
-            Some(idx) => idx,
-            None => return false,
-        };
+            let area_left = self.nodes[left as usize].rect.area();
+            let area_right = self.nodes[right as usize].rect.area();
 
-        let parent_idx = self.nodes[target as usize].parent;
+            let cost_left = self.nodes[left as usize].rect.union(&rect).area() - area_left;
+            let cost_right = self.nodes[right as usize].rect.union(&rect).area() - area_right;
 
-        if let Some(p) = parent_idx {
-            let sibling =
-                if let NodeType::Internal { left, right } = self.nodes[p as usize].node_type {
-                    if left == target { right } else { left }
-                } else {
-                    unreachable!()
+            if cost_left < cost_right {
+                curr = left;
+            } else if cost_right < cost_left {
+                curr = right;
+            } else {
+                curr = if area_left < area_right { left } else { right };
+            }
+        }
+
+        // 2. Expand hierarchy if we have capacity, otherwise fallback to union
+        let new_leaf = self.allocate();
+        let new_internal = self.allocate();
+
+        match (new_leaf, new_internal) {
+            (Some(leaf_idx), Some(internal_idx)) => {
+                let old_parent = self.nodes[curr as usize].parent;
+                let old_rect = self.nodes[curr as usize].rect.clone();
+
+                self.nodes[leaf_idx as usize] = Node {
+                    rect: rect.clone(),
+                    left: NULL_NODE,
+                    right: NULL_NODE,
+                    parent: internal_idx,
                 };
 
-            let grand_parent = self.nodes[p as usize].parent;
-            self.nodes[sibling as usize].parent = grand_parent;
+                self.nodes[curr as usize].parent = internal_idx;
 
-            if let Some(gp) = grand_parent {
-                if let NodeType::Internal { left, right } = &mut self.nodes[gp as usize].node_type {
-                    if *left == p {
-                        *left = sibling;
+                self.nodes[internal_idx as usize] = Node {
+                    rect: old_rect.union(&rect),
+                    left: curr,
+                    right: leaf_idx,
+                    parent: old_parent,
+                };
+
+                if old_parent != NULL_NODE {
+                    let parent_node = &mut self.nodes[old_parent as usize];
+                    if parent_node.left == curr {
+                        parent_node.left = internal_idx;
                     } else {
-                        *right = sibling;
+                        parent_node.right = internal_idx;
                     }
+                } else {
+                    self.root = internal_idx;
                 }
-                self.sync_hierarchy(gp);
-            } else {
-                self.root = Some(sibling);
-            }
 
-            self.free_node(target);
-            self.free_node(p);
+                self.fix_upwards(internal_idx);
+            }
+            _ => {
+                // Return nodes to free list if partially allocated
+                if let Some(idx) = new_leaf { self.free(idx); }
+                if let Some(idx) = new_internal { self.free(idx); }
+
+                // Capacity Resistant Edge-case: Force a union on the leaf.
+                self.nodes[curr as usize].rect = self.nodes[curr as usize].rect.union(&rect);
+                self.fix_upwards(curr);
+            }
+        }
+    }
+
+    /// Queries rectangles intersecting the target and calls the visitor function
+    pub fn query_intersects<F: FnMut(&Rectangle)>(&self, target: &Rectangle, mut visitor: F) {
+        if self.root == NULL_NODE { return; }
+
+        let mut stack = [NULL_NODE; 64];
+        let mut top = 0;
+        stack[top] = self.root;
+        top += 1;
+
+        while top > 0 {
+            top -= 1;
+            let curr = stack[top];
+            let node = &self.nodes[curr as usize];
+
+            if node.rect.intersects(target) {
+                if self.is_leaf(curr) {
+                    visitor(&node.rect);
+                } else if top + 2 <= 64 {
+                    stack[top] = node.left; top += 1;
+                    stack[top] = node.right; top += 1;
+                }
+            }
+        }
+    }
+
+    /// Recursively drains (deletes) all rectangles fully contained within `target`
+    /// calling `visitor` on the exact rectangles deleted.
+    pub fn drain_contained<F: FnMut(Rectangle)>(&mut self, target: &Rectangle, mut visitor: F) {
+        while let Some(leaf_idx) = self.find_first_match(target, true) {
+            let rect = self.nodes[leaf_idx as usize].rect.clone();
+            self.remove_leaf(leaf_idx);
+            visitor(rect);
+        }
+    }
+
+    /// Recursively drains (deletes) all rectangles intersecting with `target`
+    /// calling `visitor` on the exact rectangles deleted.
+    pub fn drain_intersects<F: FnMut(Rectangle)>(&mut self, target: &Rectangle, mut visitor: F) {
+        while let Some(leaf_idx) = self.find_first_match(target, false) {
+            let rect = self.nodes[leaf_idx as usize].rect.clone();
+            self.remove_leaf(leaf_idx);
+            visitor(rect);
+        }
+    }
+
+    // --- Private Helper Methods ---
+
+    fn is_leaf(&self, idx: u16) -> bool {
+        let node = &self.nodes[idx as usize];
+        node.left == NULL_NODE && node.right == NULL_NODE
+    }
+
+    fn allocate(&mut self) -> Option<u16> {
+        if self.free_head == NULL_NODE {
+            None
         } else {
-            // It was the root
-            self.free_node(target);
-            self.root = None;
-        }
-
-        self.size -= 1;
-        true
-    }
-
-    /// Removes and returns an arbitrary rectangle from the tree.
-    /// Returns `None` if the tree is empty. Operates in O(log N) time.
-    pub fn pop(&mut self) -> Option<Rectangle> {
-        let root_idx = self.root?;
-        let mut curr = root_idx;
-
-        // Traverse down the left side of the tree to find an arbitrary leaf
-        let target_rect = loop {
-            match &self.nodes[curr as usize].node_type {
-                NodeType::Leaf { item } => break item.clone(),
-                NodeType::Internal { left, .. } => curr = *left,
-                _ => unreachable!(),
-            }
-        };
-
-        // Remove the leaf using the existing balanced removal logic
-        self.remove(&target_rect);
-
-        Some(target_rect)
-    }
-
-    pub fn insert_ensured(&mut self, rect: Rectangle) -> Rectangle {
-        let mut result = rect.clone();
-
-        loop {
-            if let Ok(_) = self.insert(result.clone()) {
-                return result;
-            }
-
-            if let Some(popped) = self.pop() {
-                result = result.union(&popped);
-                continue;
-            } else {
-                panic!("Couldn't pop but we also couldn't insert?");
-            }
+            let idx = self.free_head;
+            self.free_head = self.nodes[idx as usize].left;
+            Some(idx)
         }
     }
 
-    pub fn query_intersects<F: FnMut(&Rectangle)>(&self, bounds: &Rectangle, mut callback: F) {
-        if self.root.is_none() {
-            return;
-        }
+    fn free(&mut self, idx: u16) {
+        self.nodes[idx as usize].left = self.free_head;
+        self.free_head = idx;
+    }
 
-        let mut stack = [0u8; 64];
+    fn fix_upwards(&mut self, mut node_idx: u16) {
+        while node_idx != NULL_NODE {
+            let left = self.nodes[node_idx as usize].left;
+            let right = self.nodes[node_idx as usize].right;
+
+            if left != NULL_NODE && right != NULL_NODE {
+                let rect = self.nodes[left as usize].rect.union(&self.nodes[right as usize].rect);
+                self.nodes[node_idx as usize].rect = rect;
+            }
+            node_idx = self.nodes[node_idx as usize].parent;
+        }
+    }
+
+    fn find_first_match(&self, target: &Rectangle, require_containment: bool) -> Option<u16> {
+        if self.root == NULL_NODE { return None; }
+
+        let mut stack = [NULL_NODE; 64];
         let mut top = 0;
-        stack[top] = self.root.unwrap();
+        stack[top] = self.root;
         top += 1;
 
         while top > 0 {
@@ -242,244 +297,47 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             let curr = stack[top];
             let node = &self.nodes[curr as usize];
 
-            if !node.aabb.intersects(bounds) {
-                continue;
-            }
-
-            match &node.node_type {
-                NodeType::Leaf { item } => {
-                    callback(&item);
-                }
-                NodeType::Internal { left, right } => {
-                    stack[top] = *left;
-                    top += 1;
-                    stack[top] = *right;
-                    top += 1;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    /// Queries all rectangles strictly contained within the given bounds. O(log N) avg.
-    pub fn query_contains<F: FnMut(&Rectangle)>(&self, bounds: &Rectangle, mut callback: F) {
-        if self.root.is_none() {
-            return;
-        }
-
-        let mut stack = [0u8; 64];
-        let mut top = 0;
-        stack[top] = self.root.unwrap();
-        top += 1;
-
-        while top > 0 {
-            top -= 1;
-            let curr = stack[top];
-            let node = &self.nodes[curr as usize];
-
-            if !bounds.intersects(&node.aabb) {
-                continue;
-            }
-
-            match &node.node_type {
-                NodeType::Leaf { item } => {
-                    if bounds.contains_rect(&item) {
-                        callback(&item);
-                    }
-                }
-                NodeType::Internal { left, right } => {
-                    stack[top] = *left;
-                    top += 1;
-                    stack[top] = *right;
-                    top += 1;
-                }
-                _ => {}
-            }
-        }
-    }
-
-    /// Removes all rectangles completely contained within the given bounds.
-    /// Returns the union of all removed rectangles.
-    pub fn drain_contained<F: FnMut(Rectangle)>(
-        &mut self,
-        bounds: &Rectangle,
-        mut callback: F,
-    ) -> Option<Rectangle> {
-        let mut union_rect: Option<Rectangle> = None;
-
-        loop {
-            let mut target_rect = None;
-
-            if let Some(root_idx) = self.root {
-                let mut stack = [0u8; 64];
-                let mut top = 0;
-                stack[top] = root_idx as u8;
-                top += 1;
-
-                while top > 0 {
-                    top -= 1;
-                    let curr = stack[top];
-                    let node = &self.nodes[curr as usize];
-
-                    // Only process nodes that are fully contained within bounds
-                    if !bounds.contains_rect(&node.aabb) {
-                        continue;
-                    }
-
-                    match &node.node_type {
-                        NodeType::Leaf { item: _ } => {
-                            target_rect = Some(curr);
-                            break;
-                        }
-                        NodeType::Internal { left, right } => {
-                            stack[top] = *right;
-                            top += 1;
-                            stack[top] = *left;
-                            top += 1;
-                        }
-                        NodeType::Free { .. } => unreachable!(),
-                    }
-                }
-            }
-
-            let target = match target_rect {
-                Some(idx) => idx,
-                None => break,
-            };
-
-            let item = match &self.nodes[target as usize].node_type {
-                NodeType::Leaf { item } => item.clone(),
-                _ => unreachable!(),
-            };
-
-            let aabb = self.nodes[target as usize].aabb.clone();
-
-            union_rect = match &union_rect {
-                Some(u) => Some(u.union(&item)),
-                None => Some(item.clone()),
-            };
-
-            callback(item);
-            self.remove(&aabb);
-        }
-
-        union_rect
-    }
-
-    pub fn drain_intersects<F: FnMut(Rectangle)>(&mut self, bounds: &Rectangle, mut callback: F) {
-        loop {
-            let mut target_rect = None;
-
-            // 1. Find a single intersecting leaf
-            if let Some(root_idx) = self.root {
-                let mut stack = [0u8; 64];
-                let mut top = 0;
-                stack[top] = root_idx as u8;
-                top += 1;
-
-                while top > 0 {
-                    top -= 1;
-                    let curr = stack[top];
-                    let node = &self.nodes[curr as usize];
-
-                    if !node.aabb.intersects(bounds) {
-                        continue;
-                    }
-
-                    match &node.node_type {
-                        NodeType::Leaf { item } => {
-                            target_rect = Some(item.clone());
-                            break;
-                        }
-                        NodeType::Internal { left, right } => {
-                            stack[top] = *left;
-                            top += 1;
-                            stack[top] = *right;
-                            top += 1;
-                        }
-                        _ => {}
-                    }
-                }
-            }
-
-            // 2. If an intersecting rectangle is found, remove it from the tree
-            // and trigger the callback. Otherwise, we are done.
-            if let Some(rect) = target_rect {
-                self.remove(&rect);
-                callback(rect);
-            } else {
-                break;
-            }
-        }
-    }
-
-    fn choose_leaf(&self, rect: &Rectangle) -> u8 {
-        let mut curr = self.root.unwrap();
-        loop {
-            match self.nodes[curr as usize].node_type {
-                NodeType::Leaf { .. } => return curr,
-                NodeType::Internal { left, right } => {
-                    let aabb_l = &self.nodes[left as usize].aabb;
-                    let aabb_r = &self.nodes[right as usize].aabb;
-
-                    let cost_l = aabb_l.union(rect).area() - aabb_l.area();
-                    let cost_r = aabb_r.union(rect).area() - aabb_r.area();
-
-                    curr = if cost_l < cost_r { left } else { right };
-                }
-                _ => unreachable!(),
-            }
-        }
-    }
-
-    fn sync_hierarchy(&mut self, mut curr: u8) {
-        loop {
-            if let NodeType::Internal { left, right } = self.nodes[curr as usize].node_type {
-                self.nodes[curr as usize].aabb = self.nodes[left as usize]
-                    .aabb
-                    .union(&self.nodes[right as usize].aabb);
-            }
-            if let Some(p) = self.nodes[curr as usize].parent {
-                curr = p;
-            } else {
-                break;
-            }
-        }
-    }
-
-    fn find_exact(&self, rect: &Rectangle) -> Option<u8> {
-        self.root?;
-
-        let mut stack = [0u8; 64];
-        let mut top = 0;
-        stack[top] = self.root.unwrap();
-        top += 1;
-
-        while top > 0 {
-            top -= 1;
-            let curr = stack[top];
-            let node = &self.nodes[curr as usize];
-
-            if !node.aabb.contains_rect(rect) {
-                continue;
-            }
-
-            match &node.node_type {
-                NodeType::Leaf { item } => {
-                    if item == rect {
+            if node.rect.intersects(target) {
+                if self.is_leaf(curr) {
+                    if !require_containment || target.contains_rect(&node.rect) {
                         return Some(curr);
                     }
+                } else if top + 2 <= 64 {
+                    stack[top] = node.left; top += 1;
+                    stack[top] = node.right; top += 1;
                 }
-                NodeType::Internal { left, right } => {
-                    stack[top] = *left;
-                    top += 1;
-                    stack[top] = *right;
-                    top += 1;
-                }
-                _ => {}
             }
         }
         None
+    }
+
+    fn remove_leaf(&mut self, leaf_idx: u16) {
+        let parent_idx = self.nodes[leaf_idx as usize].parent;
+        self.free(leaf_idx);
+
+        if parent_idx == NULL_NODE {
+            self.root = NULL_NODE;
+        } else {
+            let parent = self.nodes[parent_idx as usize].clone();
+            let sibling_idx = if parent.left == leaf_idx { parent.right } else { parent.left };
+            let grandparent_idx = parent.parent;
+
+            self.nodes[sibling_idx as usize].parent = grandparent_idx;
+
+            if grandparent_idx == NULL_NODE {
+                self.root = sibling_idx;
+            } else {
+                let grandparent = &mut self.nodes[grandparent_idx as usize];
+                if grandparent.left == parent_idx {
+                    grandparent.left = sibling_idx;
+                } else {
+                    grandparent.right = sibling_idx;
+                }
+            }
+
+            self.free(parent_idx);
+            self.fix_upwards(grandparent_idx);
+        }
     }
 }
 

@@ -27,7 +27,7 @@ pub fn settings_tab(state: &AppState) -> impl View<color::Space, AppState> + use
                 .foreground_color(color::Space::CSS_LIGHT_GRAY)
                 .opacity(128),
             toggle_text(
-                "Stop on weight",
+                format!("Stop on weight {}", state.n),
                 state.stop_on_weight,
                 "Stop the machine automatically when the target weight is reached",
                 false,
@@ -54,13 +54,13 @@ pub fn settings_tab(state: &AppState) -> impl View<color::Space, AppState> + use
     .hint_background_color(color::Space::BLACK)
 }
 
-fn toggle_text<C>(
-    label: &'static str,
+fn toggle_text<C, T: AsRef<str> + Clone>(
+    label: T,
     is_on: bool,
     description: &'static str,
     hides_description: bool,
     action: fn(&mut C),
-) -> impl View<color::Space, C> + use<C> {
+) -> impl View<color::Space, C> + use<C, T> {
     VStack::new((
         HStack::new((
             Text::new(label, &*font::FONT)
