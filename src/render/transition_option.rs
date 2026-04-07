@@ -32,7 +32,7 @@ impl<Subtree, T> TransitionOption<Subtree, T> {
     }
 }
 
-impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> {
+impl<Subtree: Diffable, T: Transition + PartialEq> Diffable for TransitionOption<Subtree, T> {
     const SIZE: usize = 1 + Subtree::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
@@ -51,8 +51,11 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
         {
             let changed = this_size != other_size
                 || this_transition != other_transition
-                || differ.is_region_dirty_or_drawn(self);
+                || differ.is_region_dirty(self);
             let r = differ.reserve();
+
+            let offset = this_transition.transform(Direction::Out, 0, *this_size);
+            let transform = differ.offset(offset);
 
             if !changed {
                 this_subtree.diff_with(other_subtree, differ);
@@ -61,6 +64,8 @@ impl<Subtree: Diffable, T: PartialEq> Diffable for TransitionOption<Subtree, T> 
                 differ.dirty_aabb_self(other);
                 differ.drawn_aabb_self(self);
             }
+
+            differ.restore_transform(transform);
 
             differ.commit(r, changed || differ.is_region_dirty(self));
         } else {

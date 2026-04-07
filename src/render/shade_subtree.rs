@@ -21,7 +21,7 @@ impl<C: PartialEq, T: Diffable> Diffable for ShadeSubtree<C, T> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.style != other.style || differ.is_region_dirty_or_drawn(self);
+        let changed = self.style != other.style || differ.is_region_dirty(self);
 
         let r = differ.reserve();
 
@@ -75,6 +75,7 @@ impl<C: Interpolate + Copy, T: Render<C>> Render<C> for ShadeSubtree<C, T> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

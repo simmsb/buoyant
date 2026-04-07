@@ -70,6 +70,7 @@ impl<T: Render<Color>, Color: Copy> Render<Color> for Option<T> {
             }
             (_, None) => {}
             (None, Some(target)) => {
+                target.stamp_background(render_target);
                 target.render(render_target, style);
                 differ.ignore(T::SIZE);
             }

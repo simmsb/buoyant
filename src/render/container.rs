@@ -27,7 +27,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Container<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.frame != other.frame
-            || differ.is_region_dirty_or_drawn(self)
+            || differ.is_region_dirty(self)
             ;
 
         let r = differ.reserve();
@@ -52,7 +52,7 @@ impl<T: AnimatedJoin> AnimatedJoin for Container<T> {
     }
 }
 
-impl<T: Render<Color>, Color> Render<Color> for Container<T> {
+impl<T: Render<Color>, Color: Copy> Render<Color> for Container<T> {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         self.child.render(render_target, style);
     }

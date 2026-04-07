@@ -79,7 +79,7 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
             || self.alignment != other.alignment
             || self.max_lines != other.max_lines
             || self.wrap != other.wrap
-            || differ.is_region_dirty_or_drawn(self)
+            || differ.is_region_dirty(self)
             ;
 
         differ.push(changed);
@@ -210,6 +210,7 @@ impl<C: Copy, T: AsRef<str> + Clone, F: FontRender<C>> Render<C> for Text<'_, T,
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
         }
     }

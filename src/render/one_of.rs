@@ -33,7 +33,9 @@ macro_rules! define_branch {
                     $(
                         (Self::$variant(source), Self::$variant(target)) => {
                             source.diff_with(target, differ);
-                            differ.push_repeated(false, Self::SIZE - $variant::SIZE);
+                            if $variant::SIZE < Self::SIZE {
+                                differ.push_repeated(false, Self::SIZE - $variant::SIZE);
+                            }
                         },
                     )+
                     (_, _) => {
@@ -61,7 +63,7 @@ macro_rules! define_branch {
             }
         }
 
-        impl<C, $($variant),+> Render<C> for $name<$($variant),+>
+        impl<C: Copy, $($variant),+> Render<C> for $name<$($variant),+>
             where $($variant: Render<C>,)+
         {
             fn render(&self, target: &mut impl RenderTarget<ColorFormat = C>, color: &C) {
@@ -107,6 +109,7 @@ macro_rules! define_branch {
                         },
                     )+
                     (_, target) => {
+                        target.stamp_background(render_target);
                         target.render(render_target, style);
                         differ.ignore(Self::SIZE);
                     }

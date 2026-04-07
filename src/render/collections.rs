@@ -18,14 +18,13 @@ macro_rules! impl_diffable_for_collections {
                 })+
 
                 differ.restore(note);
-                let prior_drawn_is_dirty = differ.drawn_is_dirty;
-                differ.drawn_is_dirty = false;
+
+                // Two passes, as tuples are used for both overlapping and
+                // nonoverlapping renderables.
 
                 $({
                     self.$n.diff_with(&other.$n, differ);
                 })+
-
-                differ.drawn_is_dirty = prior_drawn_is_dirty;
             }
         }
     };
@@ -201,7 +200,7 @@ impl<T: IntrinsicShape, const N: usize> IntrinsicShape for heapless::Vec<T, N> {
 
 macro_rules! impl_render_for_collections {
     ($(($n:tt, $type:ident)),+) => {
-        impl<Color, $($type: crate::render::Render<Color> ),+> crate::render::Render<Color> for ($($type),+) {
+        impl<Color: Copy, $($type: crate::render::Render<Color> ),+> crate::render::Render<Color> for ($($type),+) {
             fn render(
                 &self,
                 target: &mut impl crate::render_target::RenderTarget<ColorFormat = Color>,
@@ -266,7 +265,7 @@ mod impl_render {
     impl_render_for_collections!((0, T0), (1, T1), (2, T2), (3, T3), (4, T4), (5, T5), (6, T6), (7, T7), (8, T8), (9, T9));
 }
 
-impl<Color, T: Render<Color>> Render<Color> for [T] {
+impl<Color: Copy, T: Render<Color>> Render<Color> for [T] {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         for item in self {
             item.render(render_target, style);
@@ -304,7 +303,7 @@ impl<Color, T: Render<Color>> Render<Color> for [T] {
     }
 }
 
-impl<Color, T: Render<Color>, const N: usize> Render<Color> for [T; N] {
+impl<Color: Copy, T: Render<Color>, const N: usize> Render<Color> for [T; N] {
     #[inline]
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         self.as_slice().render(render_target, style);
@@ -335,7 +334,7 @@ impl<Color, T: Render<Color>, const N: usize> Render<Color> for [T; N] {
     }
 }
 
-impl<Color, T: Render<Color>, const N: usize> Render<Color> for heapless::Vec<T, N> {
+impl<Color: Copy, T: Render<Color>, const N: usize> Render<Color> for heapless::Vec<T, N> {
     #[inline]
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         self.as_slice().render(render_target, style);

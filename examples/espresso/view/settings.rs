@@ -51,6 +51,7 @@ pub fn settings_tab(state: &AppState) -> impl View<color::Space, AppState> + use
         .animated(Animation::linear(Duration::from_millis(200)), state.clone()),
     )
     .with_overlapping_bar(true) // we already applied padding
+    .hint_background_color(color::Space::BLACK)
 }
 
 fn toggle_text<C>(

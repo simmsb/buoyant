@@ -6,9 +6,15 @@ use crate::{
 
 use super::Diffable;
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub(crate) enum ScrollDragging {
+    Dragging,
+    NotDragging
+}
+
 // This hacks together scroll functionality from existing primitives, but
 // a bespoke implementation will eventually replace it
-type ScrolInner<T> = Offset<Animate<(Offset<T>, Option<Capsule>, Option<Capsule>), bool>>;
+type ScrolInner<T> = Offset<Animate<(Offset<T>, Option<Capsule>, Option<Capsule>), ScrollDragging>>;
 
 /// This is just a metadata structure that allows [`ScrollView`] to mutate its offset and scroll bars
 /// without recomputing a new view tree.
@@ -57,7 +63,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.scroll_size != other.scroll_size
             || self.inner_size != other.inner_size
-            || differ.is_region_dirty_or_drawn(self);
+            || differ.is_region_dirty(self);
 
         let r = differ.reserve();
 
@@ -116,6 +122,7 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for ScrollRenderable<T> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

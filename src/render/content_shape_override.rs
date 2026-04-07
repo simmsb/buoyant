@@ -21,7 +21,7 @@ impl<T: Diffable> Diffable for ContentShapeOverride<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.shape != other.shape
-            || differ.is_region_dirty_or_drawn(self) ;
+            || differ.is_region_dirty(self) ;
 
         let r = differ.reserve();
 
@@ -43,7 +43,7 @@ impl<T: AnimatedJoin> AnimatedJoin for ContentShapeOverride<T> {
     }
 }
 
-impl<T: Render<Color>, Color> Render<Color> for ContentShapeOverride<T> {
+impl<T: Render<Color>, Color: Copy> Render<Color> for ContentShapeOverride<T> {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color) {
         self.subtree.render(render_target, style);
     }
@@ -73,6 +73,7 @@ impl<T: Render<Color>, Color> Render<Color> for ContentShapeOverride<T> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

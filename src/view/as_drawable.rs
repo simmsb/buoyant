@@ -45,7 +45,7 @@ pub trait AsDrawable<Color, Captures: ?Sized> {
 
 impl<Color, Captures: ?Sized, T> AsDrawable<Color, Captures> for T
 where
-    Color: PixelColor + Interpolate + AlphaColor,
+    Color: PixelColor + Interpolate + AlphaColor + Default,
     T: View<Color, Captures>,
 {
     fn as_drawable(
@@ -81,7 +81,7 @@ struct DrawableView<T, C> {
 impl<T, C> Drawable for DrawableView<T, C>
 where
     T: Render<C>,
-    C: PixelColor + Interpolate + AlphaColor,
+    C: PixelColor + Interpolate + AlphaColor + Default,
 {
     type Color = C;
     type Output = ();

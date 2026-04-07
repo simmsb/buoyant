@@ -266,6 +266,7 @@ where
     /// Rebuilds can be eagerly triggered by calling [`rebuild()`](Self::rebuild()).
     pub fn render_animated<T, C>(&mut self, target: &mut T, color: &C)
     where
+        C: Copy,
         V: View<C, S>,
         T: RenderTarget<ColorFormat = C>,
     {
@@ -295,6 +296,7 @@ where
         working_mem: &mut [u8],
         panic_test: bool,
     ) where
+        C: Copy,
         V: View<C, S>,
         T: RenderTarget<ColorFormat = C>,
     {
@@ -323,7 +325,10 @@ where
 
         differ.reset();
 
-        println!("{}", differ.array);
+        for (idx, value) in differ.array.iter().enumerate() {
+            let loc = differ.meta.get(&idx).map(|s| s.as_str()).unwrap_or("");
+            println!("({idx}): {value} @ {loc}")
+        }
         println!("dirty: {:?}", differ.dirty_aabb);
         println!("drawn: {:?}", differ.drawn_aabb);
 
@@ -345,6 +350,7 @@ where
     /// Rebuilds can be eagerly triggered by calling [`rebuild()`](Self::rebuild()).
     pub fn render_only_target<T, C>(&mut self, target: &mut T, color: &C)
     where
+        C: Copy,
         V: View<C, S>,
         T: RenderTarget<ColorFormat = C>,
     {

@@ -99,9 +99,9 @@ use crate::{
 ///     Rectangle.foreground_color(Rgb888::RED)
 /// }
 /// ```
-pub trait View<Color, Captures: ?Sized>: ViewLayout<Captures, Renderables: Render<Color>> {}
+pub trait View<Color: Copy, Captures: ?Sized>: ViewLayout<Captures, Renderables: Render<Color>> {}
 
-impl<T, Color, Captures: ?Sized> View<Color, Captures> for T where
+impl<T, Color: Copy, Captures: ?Sized> View<Color, Captures> for T where
     Self: ViewLayout<Captures, Renderables: Render<Color>>
 {
 }

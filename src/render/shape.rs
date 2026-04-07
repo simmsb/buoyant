@@ -66,6 +66,7 @@ impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive + IntrinsicShape, C: 
     ) {
         if differ.pop() {
             // is this correct?
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
         }
 
@@ -93,7 +94,7 @@ impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.line_width != other.line_width
-            || differ.is_region_dirty_or_drawn(self)
+            || differ.is_region_dirty(self)
             ;
 
         let r = differ.reserve();

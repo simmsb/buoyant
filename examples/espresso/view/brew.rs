@@ -20,4 +20,5 @@ pub fn brew_tab(_state: &AppState) -> impl View<color::Space, AppState> + use<> 
         .foreground_color(color::Space::WHITE),
     )
     .with_direction(ScrollDirection::Both)
+    .hint_background_color(color::Space::BLACK)
 }

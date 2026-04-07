@@ -49,6 +49,8 @@ pub trait RenderTarget {
     /// The alpha value for the current layer.
     fn alpha(&self) -> u8;
 
+    fn background(&self) -> Self::ColorFormat;
+
     /// Reports that an animation is active.
     ///
     /// If a frame passes without this being called, the render target may

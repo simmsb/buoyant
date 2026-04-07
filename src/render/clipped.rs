@@ -23,7 +23,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Clipped<T> {
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.clip_rect != other.clip_rect
-            || differ.is_region_dirty_or_drawn(self)
+            || differ.is_region_dirty(self)
             ;
 
         let r = differ.reserve();
@@ -95,6 +95,7 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Clipped<T> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

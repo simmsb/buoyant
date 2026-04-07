@@ -7,11 +7,15 @@
 //! animations.
 
 use core::time::Duration;
+use std::{collections::HashMap, panic::Location};
 
-use crate::primitives::geometry::Shape;
-use crate::primitives::geometry::{self, Rectangle};
+use crate::primitives::{geometry::{self, Rectangle}, transform::{CoordinateSpaceTransform as _, ScaleFactor}};
 use crate::primitives::{Point, aabb::StaticAABBTree};
 use crate::render_target::RenderTarget;
+use crate::{
+    primitives::{geometry::Shape, transform::LinearTransform},
+    render_target::{self, SolidBrush},
+};
 
 mod animate;
 pub mod chart;
@@ -45,6 +49,7 @@ pub use offset::Offset;
 pub use one_of::{OneOf2, OneOf3, OneOf4, OneOf5, OneOf6, OneOf7, OneOf8, OneOf9, OneOf10};
 pub use opacity::Opacity;
 pub use scroll_renderable::ScrollRenderable;
+pub(crate) use scroll_renderable::ScrollDragging;
 pub use shade_subtree::ShadeSubtree;
 pub use shape::Capsule;
 pub use shape::Circle;
@@ -61,12 +66,13 @@ pub struct Differ<'a> {
     /// know the size
     granular: bool,
     idx: usize,
+    pub(crate) meta: HashMap<usize, String>,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
     anything_changed: bool,
     pub(crate) dirty_aabb: &'a mut StaticAABBTree<60>,
     pub(crate) drawn_aabb: &'a mut StaticAABBTree<60>,
-    pub(crate) drawn_is_dirty: bool,
     pub(crate) panic_test: bool,
+    transform: LinearTransform,
 }
 
 #[derive(Debug)]
@@ -82,50 +88,81 @@ impl<'a> Differ<'a> {
         drawn_aabb: &'a mut StaticAABBTree<60>,
     ) -> Self {
         Self {
+            meta: HashMap::new(),
             granular: true,
             idx: 0,
             array,
             anything_changed: false,
             dirty_aabb,
             drawn_aabb,
-            drawn_is_dirty: true,
             panic_test: false,
+            transform: LinearTransform::default(),
         }
     }
 
-    pub fn is_region_dirty_or_drawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
-        let Some(bb) = renderable.content_shape().bounding_box() else {
-            return false;
-        };
-        self.test_dirty_region(&bb) || (self.drawn_is_dirty && self.test_drawn_region(&bb))
+    pub fn restore_transform(&mut self, transform: LinearTransform) {
+        self.transform = transform;
+    }
+
+    pub fn transform(&mut self, transform: &LinearTransform) -> LinearTransform {
+        let r_transform = self.transform.clone();
+        self.transform = self.transform.applying(transform);
+        r_transform
+    }
+
+    pub fn offset(&mut self, offset: Point) -> LinearTransform {
+        let transform = self.transform.clone();
+        self.transform.offset.x +=
+            (offset.x * self.transform.scale.cast_signed()).to_num::<i32>();
+        self.transform.offset.y +=
+            (offset.y * self.transform.scale.cast_signed()).to_num::<i32>();
+        transform
+    }
+
+    pub fn scale(&mut self, scale: ScaleFactor) -> LinearTransform {
+        let transform = self.transform.clone();
+        self.transform.scale *= scale;
+        transform
     }
 
     pub fn is_region_dirty<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
-        self.test_dirty_region(&bb)
+
+        let bbt = bb.applying(&self.transform);
+
+        self.test_dirty_region(&bbt)
     }
 
     pub fn is_region_overdrawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
-        self.test_drawn_region(&bb)
+
+        let bbt = bb.applying(&self.transform);
+
+        self.test_drawn_region(&bbt)
     }
 
     pub fn dirty_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
-        self.add_dirty_region(bb);
+
+        let bbt = bb.applying(&self.transform);
+
+        self.add_dirty_region(bbt);
     }
 
     pub fn drawn_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
-        self.add_drawn_region(bb);
+
+        let bbt = bb.applying(&self.transform);
+
+        self.add_drawn_region(bbt);
     }
 
     pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
@@ -144,9 +181,9 @@ impl<'a> Differ<'a> {
         let mut whole = region.clone();
 
         println!("Add dirty region: {region}");
-        // if self.panic_test {
-        //     panic!("Nop");
-        // }
+        if self.panic_test {
+            panic!("Nop");
+        }
 
         // if region.size == crate::primitives::Size::new(320, 240) {
         //     panic!("Nop");
@@ -163,7 +200,9 @@ impl<'a> Differ<'a> {
 
         println!("Add drawn region: {region}");
 
-        self.dirty_aabb.drain_contained(&region, |_| {});
+        self.dirty_aabb.drain_contained(&region, |r| {
+            println!("Removing drawn-over dirty: {}", r);
+        });
 
         self.drawn_aabb
             .drain_contained(&region, |r| whole = whole.union(&r));
@@ -207,30 +246,86 @@ impl<'a> Differ<'a> {
     //     self.array[note.0..self.idx].fill(changed);
     // }
 
+    #[track_caller]
     pub fn commit(&mut self, reservation: DifferReservation, changed: bool) {
-        if !changed { return; }
+        if !changed {
+            return;
+        }
 
         self.anything_changed |= changed;
         self.array.set(reservation.0, changed);
+        let loc = Location::caller();
+        self.meta.insert(reservation.0, format!("{}:{}", loc.file(), loc.line()));
     }
 
-    pub fn push(&mut self, changed: bool) {
+    #[track_caller]
+    pub fn push_inner(&mut self, changed: bool, track: bool) {
+        // let bt = backtrace::Backtrace::new();
+        // println!("Push from: ");
+        // for frame in bt.frames() {
+        //     if let Some(symbol) = frame.symbols().first() {
+        //         let Some(name) = symbol.name().map(|s| s.to_string()) else {
+        //             continue;
+        //         };
+        //         let Some(filename) = symbol.filename() else {
+        //             continue;
+        //         };
+        //         let Some(lineno) = symbol.lineno() else {
+        //             continue;
+        //         };
+
+        //         if !filename
+        //             .as_os_str()
+        //             .as_encoded_bytes()
+        //             .windows(7)
+        //             .position(|s| s == b"buoyant")
+        //             .is_some()
+        //         {
+        //             continue;
+        //         }
+
+        //         let name = match name.rsplit_once("::") {
+        //             Some((_, name)) => name,
+        //             None => &name,
+        //         };
+
+        //         println!("  > {name} ({filename:?}:{lineno})");
+        //     }
+        // }
+
         self.anything_changed |= changed;
         if !self.granular && changed {
             self.array.set(0, changed);
+            return;
         }
 
         let idx = self.idx;
         self.idx += 1;
 
-        if !changed { return; }
+        if !changed {
+            return;
+        }
+
+        if track {
+            let loc = Location::caller();
+            self.meta.insert(idx, format!("{}:{}", loc.file(), loc.line()));
+        }
 
         self.array.set(idx, changed);
     }
 
+    #[track_caller]
+    pub fn push(&mut self, changed: bool) {
+        self.push_inner(changed, true);
+    }
+
+    #[track_caller]
     pub fn push_repeated(&mut self, changed: bool, n: usize) {
+        let loc = Location::caller();
+        self.meta.insert(self.idx, format!("{}:{} (repeated {})", loc.file(), loc.line(), n));
+        // println!("Push repeated: {n} of {}/{}", self.idx, self.array.len());
         for _ in 0..n {
-            self.push(changed);
+            self.push_inner(changed, false);
         }
     }
 
@@ -280,7 +375,10 @@ pub trait AnimatedJoin {
 }
 
 /// A type that can be rendered to a target and animated
-pub trait Render<Color>: AnimatedJoin + IntrinsicShape + Diffable {
+pub trait Render<Color>: AnimatedJoin + IntrinsicShape + Diffable
+where
+    Color: Copy,
+{
     /// Render the view to the screen
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>, style: &Color);
 
@@ -295,6 +393,18 @@ pub trait Render<Color>: AnimatedJoin + IntrinsicShape + Diffable {
         style: &Color,
         domain: &AnimationDomain,
     );
+
+    fn stamp_background(&self, render_target: &mut impl RenderTarget<ColorFormat = Color>) {
+        if let Some(shape) = self.content_shape().bounding_box() {
+            let background = render_target.background();
+            render_target.fill(
+                LinearTransform::default(),
+                &SolidBrush::new(background),
+                None,
+                &shape,
+            );
+        }
+    }
 
     fn render_animated_diffed(
         render_target: &mut impl RenderTarget<ColorFormat = Color>,

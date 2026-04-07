@@ -11,7 +11,7 @@ use crate::{
     primitives::{
         Dimensions, Point, ProposedDimension, ProposedDimensions, Size, geometry::Rectangle,
     },
-    render::{Animate, Capsule, Offset, ScrollRenderable},
+    render::{Animate, Capsule, Offset, ScrollDragging, ScrollRenderable},
     transition::Opacity,
     view::{ViewLayout, ViewMarker},
 };
@@ -381,7 +381,7 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
                     (offset, horizontal_bar, vertical_bar),
                     Animation::ease_out_cubic(animation_time),
                     env.app_time(),
-                    is_dragging,
+                    if is_dragging { ScrollDragging::Dragging } else { ScrollDragging::NotDragging },
                 ),
             ),
         )
@@ -581,7 +581,7 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
                             if is_exclusive {
                                 // If we don't set this, the scroll view will not animate the
                                 // snap back
-                                render_tree.inner.subtree.value = true;
+                                render_tree.inner.subtree.value = ScrollDragging::Dragging;
                                 (EventResult::handled_unfocused(), delta)
                             } else {
                                 let touch_offset = render_tree.offset() + render_tree.inner.offset;

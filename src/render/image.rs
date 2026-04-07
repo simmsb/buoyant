@@ -33,7 +33,7 @@ where
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
             || !core::ptr::addr_eq(self.image as *const _, other.image as *const _)
-            || differ.is_region_dirty_or_drawn(self);
+            || differ.is_region_dirty(self);
         differ.push(changed);
         if changed {
             differ.dirty_aabb_self(other);
@@ -142,6 +142,7 @@ mod embedded_graphics {
             differ: &mut crate::render::Differ<'_>,
         ) {
             if differ.pop() {
+                target.stamp_background(render_target);
                 Self::render_animated(render_target, source, target, style, domain);
             }
         }

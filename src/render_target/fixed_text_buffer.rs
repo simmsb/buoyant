@@ -189,6 +189,10 @@ impl<const W: usize, const H: usize> RenderTarget for FixedTextBuffer<W, H> {
     fn raw_surface(&mut self) -> impl Surface<Color = Self::ColorFormat> + '_ {
         self
     }
+
+    fn background(&self) -> Self::ColorFormat {
+        self.active_layer.background_hint.unwrap_or(' ')
+    }
 }
 
 impl<const W: usize, const H: usize> Surface for FixedTextBuffer<W, H> {

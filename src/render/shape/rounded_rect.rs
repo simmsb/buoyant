@@ -50,7 +50,7 @@ impl Diffable for RoundedRect {
     const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
-        let changed = self != other || differ.is_region_dirty_or_drawn(self);
+        let changed = self != other || differ.is_region_dirty(self);
 
         differ.push(changed);
 

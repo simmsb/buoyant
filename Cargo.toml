@@ -58,6 +58,7 @@ rusttype = { version = "^0.9.3", optional = true }
 bitvec = { version = "1.0.1", default-features = false }
 display_as_debug = "0.5.1"
 color-backtrace = { version = "0.7.2", optional = true }
+backtrace = "0.3.76"
 
 [dev-dependencies]
 tinytga = "^0.5"

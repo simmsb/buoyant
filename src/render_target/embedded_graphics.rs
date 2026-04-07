@@ -26,7 +26,7 @@ use embedded_graphics::{
     },
 };
 
-use super::{Glyph, ImageBrush, Stroke, Surface};
+use super::{Glyph, ImageBrush, SolidBrush, Stroke, Surface};
 
 #[derive(Debug)]
 pub struct EmbeddedGraphicsRenderTarget<D: Surface> {
@@ -102,7 +102,7 @@ where
 impl<D, C> RenderTarget for EmbeddedGraphicsRenderTarget<D>
 where
     D: Surface<Color = C>,
-    C: PixelColor + Interpolate + AlphaColor,
+    C: PixelColor + Interpolate + AlphaColor + Default,
 {
     type ColorFormat = C;
 
@@ -135,6 +135,10 @@ where
 
     fn alpha(&self) -> u8 {
         self.active_layer.alpha
+    }
+
+    fn background(&self) -> Self::ColorFormat {
+        self.active_layer.background_hint.unwrap_or_default()
     }
 
     fn report_active_animation(&mut self) {

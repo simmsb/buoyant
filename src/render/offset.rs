@@ -24,11 +24,11 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.offset != other.offset
-            || differ.is_region_dirty_or_drawn(self)
-            ;
+        let changed = self.offset != other.offset || differ.is_region_dirty(self);
 
         let r = differ.reserve();
+
+        let transform = differ.offset(self.offset);
 
         if !changed {
             self.subtree.diff_with(&other.subtree, differ);
@@ -37,6 +37,8 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         };
+
+        differ.restore_transform(transform);
 
         differ.commit(r, changed || differ.is_region_dirty(self));
     }
@@ -90,6 +92,13 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Offset<T> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            let offset = Point::interpolate(source.offset, target.offset, domain.factor);
+            render_target.with_layer(
+                |l| l.offset(offset),
+                |render_target| {
+                    target.stamp_background(render_target);
+                },
+            );
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

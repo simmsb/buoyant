@@ -1,6 +1,6 @@
 use crate::{
-    primitives::Interpolate,
-    render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget},
+    primitives::{Interpolate, transform::LinearTransform},
+    render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget}, render_target::SolidBrush,
 };
 
 use super::{AnimatedJoin, Diffable};
@@ -17,13 +17,12 @@ impl<T, C> HintBackground<T, C> {
     }
 }
 
-impl<T: Diffable, C: PartialEq> Diffable for HintBackground<T, C> {
+impl<T: Diffable, C: PartialEq + core::fmt::Debug> Diffable for HintBackground<T, C> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.color != other.color
-            || differ.is_region_dirty_or_drawn(self)
-            ;
+        let changed = self.color != other.color || differ.is_region_dirty(self);
+        println!("Hint background changed ({changed}): {:?}->{:?} (background: {})", self.color, other.color, differ.is_region_dirty(self));
 
         let r = differ.reserve();
 
@@ -46,7 +45,7 @@ impl<T: AnimatedJoin, C: Interpolate + Copy> AnimatedJoin for HintBackground<T, 
     }
 }
 
-impl<T: Render<C>, C: Interpolate + Copy> Render<C> for HintBackground<T, C> {
+impl<T: Render<C>, C: Interpolate + Copy + core::fmt::Debug> Render<C> for HintBackground<T, C> {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = C>, style: &C) {
         let color = self.color;
         render_target.with_layer(
@@ -88,6 +87,7 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for HintBackground<T, C> {
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
+            target.stamp_background(render_target);
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

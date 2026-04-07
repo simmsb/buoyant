@@ -8,7 +8,7 @@ use buoyant::{
         rotary::{Rotary, RotaryEvent, RotaryState},
     },
 };
-use embedded_graphics::prelude::WebColors;
+use embedded_graphics::prelude::{RgbColor, WebColors};
 
 pub fn clean_tab(_state: &crate::AppState) -> impl View<color::Space, AppState> + use<> {
     VStack::new((
@@ -31,6 +31,7 @@ pub fn clean_tab(_state: &crate::AppState) -> impl View<color::Space, AppState> 
             },
         ),
     ))
+    .hint_background_color(color::Space::BLACK)
 }
 
 pub fn clean_overlay(settings: &CleanSettings) -> impl View<color::Space, AppState> + use<> {
