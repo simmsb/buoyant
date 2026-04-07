@@ -12,6 +12,8 @@ mod embedded_mono_font;
 mod rusttype;
 #[cfg(feature = "embedded-graphics")]
 mod u8g2;
+#[cfg(feature = "glyphr")]
+mod glyphr;
 
 /// A font that renders individual characters at a time.
 /// Multi-character graphemes are not supported, making

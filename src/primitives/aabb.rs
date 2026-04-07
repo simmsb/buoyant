@@ -96,6 +96,7 @@ impl Node {
 
 impl<const CAP: usize> StaticAABBTree<CAP> {
     /// Creates a new damage tracker with an initialized internal free-list.
+    #[must_use] 
     pub const fn new() -> Self {
         let mut nodes = [Node::EMPTY; CAP];
         let mut free_head = NULL_NODE;
@@ -158,49 +159,46 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
         let new_leaf = self.allocate();
         let new_internal = self.allocate();
 
-        match (new_leaf, new_internal) {
-            (Some(leaf_idx), Some(internal_idx)) => {
-                let old_parent = self.nodes[curr as usize].parent;
-                let old_rect = self.nodes[curr as usize].rect.clone();
+        if let (Some(leaf_idx), Some(internal_idx)) = (new_leaf, new_internal) {
+            let old_parent = self.nodes[curr as usize].parent;
+            let old_rect = self.nodes[curr as usize].rect.clone();
 
-                self.nodes[leaf_idx as usize] = Node {
-                    rect: rect.clone(),
-                    left: NULL_NODE,
-                    right: NULL_NODE,
-                    parent: internal_idx,
-                };
+            self.nodes[leaf_idx as usize] = Node {
+                rect: rect.clone(),
+                left: NULL_NODE,
+                right: NULL_NODE,
+                parent: internal_idx,
+            };
 
-                self.nodes[curr as usize].parent = internal_idx;
+            self.nodes[curr as usize].parent = internal_idx;
 
-                self.nodes[internal_idx as usize] = Node {
-                    rect: old_rect.union(&rect),
-                    left: curr,
-                    right: leaf_idx,
-                    parent: old_parent,
-                };
+            self.nodes[internal_idx as usize] = Node {
+                rect: old_rect.union(&rect),
+                left: curr,
+                right: leaf_idx,
+                parent: old_parent,
+            };
 
-                if old_parent != NULL_NODE {
-                    let parent_node = &mut self.nodes[old_parent as usize];
-                    if parent_node.left == curr {
-                        parent_node.left = internal_idx;
-                    } else {
-                        parent_node.right = internal_idx;
-                    }
+            if old_parent == NULL_NODE {
+                self.root = internal_idx;
+            } else {
+                let parent_node = &mut self.nodes[old_parent as usize];
+                if parent_node.left == curr {
+                    parent_node.left = internal_idx;
                 } else {
-                    self.root = internal_idx;
+                    parent_node.right = internal_idx;
                 }
-
-                self.fix_upwards(internal_idx);
             }
-            _ => {
-                // Return nodes to free list if partially allocated
-                if let Some(idx) = new_leaf { self.free(idx); }
-                if let Some(idx) = new_internal { self.free(idx); }
 
-                // Capacity Resistant Edge-case: Force a union on the leaf.
-                self.nodes[curr as usize].rect = self.nodes[curr as usize].rect.union(&rect);
-                self.fix_upwards(curr);
-            }
+            self.fix_upwards(internal_idx);
+        } else {
+            // Return nodes to free list if partially allocated
+            if let Some(idx) = new_leaf { self.free(idx); }
+            if let Some(idx) = new_internal { self.free(idx); }
+
+            // Capacity Resistant Edge-case: Force a union on the leaf.
+            self.nodes[curr as usize].rect = self.nodes[curr as usize].rect.union(&rect);
+            self.fix_upwards(curr);
         }
     }
 

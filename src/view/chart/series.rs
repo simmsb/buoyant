@@ -55,7 +55,7 @@ where
     line_width: u32,
 }
 
-impl<'a, const N: usize, I, F> core::fmt::Debug for LineSeries<'a, N, I, F>
+impl<const N: usize, I, F> core::fmt::Debug for LineSeries<'_, N, I, F>
 where
     F: Fn(&I) -> LineMark,
 {
@@ -95,7 +95,7 @@ where
     }
 }
 
-impl<'a, const N: usize, I, F> ChartContent for LineSeries<'a, N, I, F>
+impl<const N: usize, I, F> ChartContent for LineSeries<'_, N, I, F>
 where
     F: Fn(&I) -> LineMark,
 {
@@ -131,7 +131,7 @@ where
     spacing: u32,
 }
 
-impl<'a, const N: usize, I, F> core::fmt::Debug for BarSeries<'a, N, I, F>
+impl<const N: usize, I, F> core::fmt::Debug for BarSeries<'_, N, I, F>
 where
     F: Fn(&I) -> BarMark,
 {
@@ -171,7 +171,7 @@ where
     }
 }
 
-impl<'a, const N: usize, I, F> ChartContent for BarSeries<'a, N, I, F>
+impl<const N: usize, I, F> ChartContent for BarSeries<'_, N, I, F>
 where
     F: Fn(&I) -> BarMark,
 {
@@ -232,7 +232,7 @@ where
     point_size: u32,
 }
 
-impl<'a, const N: usize, I, F> core::fmt::Debug for PointSeries<'a, N, I, F>
+impl<const N: usize, I, F> core::fmt::Debug for PointSeries<'_, N, I, F>
 where
     F: Fn(&I) -> PointMark,
 {
@@ -272,7 +272,7 @@ where
     }
 }
 
-impl<'a, const N: usize, I, F> ChartContent for PointSeries<'a, N, I, F>
+impl<const N: usize, I, F> ChartContent for PointSeries<'_, N, I, F>
 where
     F: Fn(&I) -> PointMark,
 {

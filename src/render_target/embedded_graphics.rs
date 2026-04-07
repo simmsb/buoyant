@@ -26,7 +26,7 @@ use embedded_graphics::{
     },
 };
 
-use super::{Glyph, ImageBrush, SolidBrush, Stroke, Surface};
+use super::{Glyph, ImageBrush, Stroke, Surface};
 
 #[derive(Debug)]
 pub struct EmbeddedGraphicsRenderTarget<D: Surface> {

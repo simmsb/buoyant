@@ -32,13 +32,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for Container<T> {
 
         let r = differ.reserve();
 
-        if !changed {
-            self.child.diff_with(&other.child, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
-        };
+        } else {
+            self.child.diff_with(&other.child, differ);
+        }
 
         differ.commit(r, changed || differ.is_region_dirty(self));
     }

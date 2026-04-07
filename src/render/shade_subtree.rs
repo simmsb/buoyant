@@ -25,12 +25,12 @@ impl<C: PartialEq, T: Diffable> Diffable for ShadeSubtree<C, T> {
 
         let r = differ.reserve();
 
-        if !changed {
-            self.subtree.diff_with(&other.subtree, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
         }
 
         differ.commit(r, changed || differ.is_region_dirty(self));

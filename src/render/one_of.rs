@@ -39,7 +39,6 @@ macro_rules! define_branch {
                         },
                     )+
                     (_, _) => {
-                        println!("Oneof changed! from {:?} to {:?}", other.content_shape(), self.content_shape());
                         differ.push_repeated(true, Self::SIZE);
                         differ.dirty_aabb_self(other);
                         differ.drawn_aabb_self(self);

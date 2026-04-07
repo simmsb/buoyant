@@ -50,21 +50,12 @@ impl<T: Diffable, U: core::fmt::Debug + PartialEq + Clone> Diffable for Animate<
 
         let r = differ.reserve();
 
-        if !changed {
-            self.subtree.diff_with(&other.subtree, differ);
-        } else {
-            println!(
-                "Animate changed: frame_time: {:?}<-{:?}, partial: {}<-{}, region dirty: {}",
-                self.frame_time,
-                other.frame_time,
-                self.is_partial,
-                other.is_partial,
-                differ.is_region_dirty(self)
-            );
-
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
         }
 
         differ.commit(r, changed || differ.is_region_dirty(self));
@@ -179,52 +170,14 @@ impl<C: Copy, T: Render<C>, U: core::fmt::Debug + PartialEq + Clone> Render<C> f
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {
-                T::render_animated_diffed(
-                    render_target,
-                    &source.subtree,
-                    &target.subtree,
-                    style,
-                    domain,
-                    differ,
-                );
-
-            // let end_time = if source.value != target.value {
-            //     let duration = target.animation.duration;
-            //     target.frame_time + duration
-            // } else if source.is_partial {
-            //     // continue source animation
-            //     let duration = source.animation.duration;
-            //     source.frame_time + duration
-            // } else {
-            //     // no animation
-            //     domain.app_time
-            // };
-
-            // if end_time == Duration::from_secs(0) || domain.app_time >= end_time {
-            //     // animation has already completed or there was zero duration
-            //     let subdomain = AnimationDomain {
-            //         factor: 255,
-            //         app_time: domain.app_time,
-            //     };
-
-            //     T::render_animated_diffed(
-            //         render_target,
-            //         &source.subtree,
-            //         &target.subtree,
-            //         style,
-            //         &subdomain,
-            //         differ,
-            //     );
-            // } else {
-            //     T::render_animated(
-            //         render_target,
-            //         &source.subtree,
-            //         &target.subtree,
-            //         style,
-            //         domain,
-            //     );
-            //     differ.ignore(T::SIZE);
-            // };
+            T::render_animated_diffed(
+                render_target,
+                &source.subtree,
+                &target.subtree,
+                style,
+                domain,
+                differ,
+            );
         }
     }
 }

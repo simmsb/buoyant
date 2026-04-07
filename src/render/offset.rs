@@ -30,13 +30,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
 
         let transform = differ.offset(self.offset);
 
-        if !changed {
-            self.subtree.diff_with(&other.subtree, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
-        };
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
+        }
 
         differ.restore_transform(transform);
 

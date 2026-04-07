@@ -1,6 +1,6 @@
 use crate::{
-    primitives::{Interpolate, transform::LinearTransform},
-    render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget}, render_target::SolidBrush,
+    primitives::Interpolate,
+    render::{AnimationDomain, ContentShape, IntrinsicShape, Render, RenderTarget},
 };
 
 use super::{AnimatedJoin, Diffable};
@@ -22,16 +22,15 @@ impl<T: Diffable, C: PartialEq + core::fmt::Debug> Diffable for HintBackground<T
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.color != other.color || differ.is_region_dirty(self);
-        println!("Hint background changed ({changed}): {:?}->{:?} (background: {})", self.color, other.color, differ.is_region_dirty(self));
 
         let r = differ.reserve();
 
-        if !changed {
-            self.subtree.diff_with(&other.subtree, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
         }
 
         differ.commit(r, changed || differ.is_region_dirty(self));

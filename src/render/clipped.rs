@@ -29,12 +29,12 @@ impl<T: Diffable + IntrinsicShape> Diffable for Clipped<T> {
         let r = differ.reserve();
         differ.commit(r, changed);
 
-        if !changed {
-            self.subtree.diff_with(&other.subtree, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
+        } else {
+            self.subtree.diff_with(&other.subtree, differ);
         }
     }
 }

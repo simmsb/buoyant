@@ -57,12 +57,12 @@ impl<Subtree: Diffable, T: Transition + PartialEq> Diffable for TransitionOption
                 let offset = this_transition.transform(Direction::Out, 0, *this_size);
                 let transform = differ.offset(offset);
 
-                if !changed {
-                    this_subtree.diff_with(other_subtree, differ);
-                } else {
+                if changed {
                     differ.push_repeated(true, Subtree::SIZE);
                     differ.dirty_aabb_self(other);
                     differ.drawn_aabb_self(self);
+                } else {
+                    this_subtree.diff_with(other_subtree, differ);
                 }
 
                 differ.restore_transform(transform);

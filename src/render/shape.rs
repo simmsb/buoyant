@@ -98,13 +98,13 @@ impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
             ;
 
         let r = differ.reserve();
-        if !changed {
-            self.shape.diff_with(&other.shape, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
-        };
+        } else {
+            self.shape.diff_with(&other.shape, differ);
+        }
 
         differ.commit(r, changed || differ.is_region_dirty(self));
     }

@@ -7,14 +7,13 @@
 //! animations.
 
 use core::time::Duration;
-use std::{collections::HashMap, panic::Location};
 
 use crate::primitives::{geometry::{self, Rectangle}, transform::{CoordinateSpaceTransform as _, ScaleFactor}};
 use crate::primitives::{Point, aabb::StaticAABBTree};
 use crate::render_target::RenderTarget;
 use crate::{
     primitives::{geometry::Shape, transform::LinearTransform},
-    render_target::{self, SolidBrush},
+    render_target::SolidBrush,
 };
 
 mod animate;
@@ -66,12 +65,9 @@ pub struct Differ<'a> {
     /// know the size
     granular: bool,
     idx: usize,
-    pub(crate) meta: HashMap<usize, String>,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
-    anything_changed: bool,
     pub(crate) dirty_aabb: &'a mut StaticAABBTree<60>,
     pub(crate) drawn_aabb: &'a mut StaticAABBTree<60>,
-    pub(crate) panic_test: bool,
     transform: LinearTransform,
 }
 
@@ -88,14 +84,11 @@ impl<'a> Differ<'a> {
         drawn_aabb: &'a mut StaticAABBTree<60>,
     ) -> Self {
         Self {
-            meta: HashMap::new(),
             granular: true,
             idx: 0,
             array,
-            anything_changed: false,
             dirty_aabb,
             drawn_aabb,
-            panic_test: false,
             transform: LinearTransform::default(),
         }
     }
@@ -165,33 +158,22 @@ impl<'a> Differ<'a> {
         self.add_drawn_region(bbt);
     }
 
+    #[must_use] 
     pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
-        self.dirty_aabb.query_intersects(&region, |_| result = true);
+        self.dirty_aabb.query_intersects(region, |_| result = true);
         result
     }
 
+    #[must_use] 
     pub fn test_drawn_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
-        self.drawn_aabb.query_intersects(&region, |_| result = true);
+        self.drawn_aabb.query_intersects(region, |_| result = true);
         result
     }
 
     pub fn add_dirty_region(&mut self, region: Rectangle) {
         let mut whole = region.clone();
-
-        println!("Add dirty region: {region}");
-        // if region.origin == Point::new(74, -1) {
-        //     panic!("Huh");
-        // }
-
-        if self.panic_test {
-            panic!("Nop");
-        }
-
-        // if region.size == crate::primitives::Size::new(320, 240) {
-        //     panic!("Nop");
-        // }
 
         self.dirty_aabb
             .drain_contained(&region, |r| whole = whole.union(&r));
@@ -202,26 +184,12 @@ impl<'a> Differ<'a> {
     pub fn add_drawn_region(&mut self, region: Rectangle) {
         let mut whole = region.clone();
 
-        println!("Add drawn region: {region}");
-
-        self.dirty_aabb.drain_contained(&region, |r| {
-            // println!("Removing drawn-over dirty: {}", r);
-        });
+        self.dirty_aabb.drain_contained(&region, |_r| {});
 
         self.drawn_aabb
             .drain_contained(&region, |r| whole = whole.union(&r));
 
         self.drawn_aabb.insert(whole);
-    }
-
-    pub fn reset_anything_changed(&mut self) -> bool {
-        let anything_changed = self.anything_changed;
-        self.anything_changed = false;
-        anything_changed
-    }
-
-    pub fn restore_anything_changed(&mut self, changed: bool) {
-        self.anything_changed |= changed;
     }
 
     pub fn reserve(&mut self) -> DifferReservation {
@@ -236,68 +204,22 @@ impl<'a> Differ<'a> {
     }
 
     pub fn note(&mut self) -> DifferNote {
-        return DifferNote(self.idx);
+        DifferNote(self.idx)
     }
 
     pub fn restore(&mut self, note: DifferNote) {
         self.idx = note.0;
     }
 
-    // pub fn overwrite_from_note(&mut self, note: DifferNote, changed: bool) {
-
-    //     println!("Overwrite from note {} to {}", note.0, self.idx);
-    //     self.anything_changed |= changed;
-    //     self.array[note.0..self.idx].fill(changed);
-    // }
-
-    #[track_caller]
     pub fn commit(&mut self, reservation: DifferReservation, changed: bool) {
         if !changed {
             return;
         }
 
-        self.anything_changed |= changed;
         self.array.set(reservation.0, changed);
-        let loc = Location::caller();
-        self.meta.insert(reservation.0, format!("{}:{}", loc.file(), loc.line()));
     }
 
-    #[track_caller]
-    pub fn push_inner(&mut self, changed: bool, track: bool) {
-        // let bt = backtrace::Backtrace::new();
-        // println!("Push from: ");
-        // for frame in bt.frames() {
-        //     if let Some(symbol) = frame.symbols().first() {
-        //         let Some(name) = symbol.name().map(|s| s.to_string()) else {
-        //             continue;
-        //         };
-        //         let Some(filename) = symbol.filename() else {
-        //             continue;
-        //         };
-        //         let Some(lineno) = symbol.lineno() else {
-        //             continue;
-        //         };
-
-        //         if !filename
-        //             .as_os_str()
-        //             .as_encoded_bytes()
-        //             .windows(7)
-        //             .position(|s| s == b"buoyant")
-        //             .is_some()
-        //         {
-        //             continue;
-        //         }
-
-        //         let name = match name.rsplit_once("::") {
-        //             Some((_, name)) => name,
-        //             None => &name,
-        //         };
-
-        //         println!("  > {name} ({filename:?}:{lineno})");
-        //     }
-        // }
-
-        self.anything_changed |= changed;
+    pub fn push_inner(&mut self, changed: bool) {
         if !self.granular && changed {
             self.array.set(0, changed);
             return;
@@ -310,28 +232,16 @@ impl<'a> Differ<'a> {
             return;
         }
 
-        if track {
-            let loc = Location::caller();
-            self.meta.insert(idx, format!("{}:{}", loc.file(), loc.line()));
-        }
-
         self.array.set(idx, changed);
     }
 
-    #[track_caller]
     pub fn push(&mut self, changed: bool) {
-        self.push_inner(changed, true);
+        self.push_inner(changed);
     }
 
-    #[track_caller]
     pub fn push_repeated(&mut self, changed: bool, n: usize) {
-        if changed {
-            let loc = Location::caller();
-            self.meta.insert(self.idx, format!("{}:{} (repeated {})", loc.file(), loc.line(), n));
-        }
-        // println!("Push repeated: {n} of {}/{}", self.idx, self.array.len());
         for _ in 0..n {
-            self.push_inner(changed, false);
+            self.push_inner(changed);
         }
     }
 
@@ -343,8 +253,8 @@ impl<'a> Differ<'a> {
         let idx = self.idx;
         self.idx += 1;
 
-        let r = self.array[idx];
-        r
+        
+        self.array[idx]
     }
 
     pub fn ignore(&mut self, n: usize) {
@@ -354,10 +264,6 @@ impl<'a> Differ<'a> {
 
     pub fn reset(&mut self) {
         self.idx = 0;
-    }
-
-    pub fn any_changed(&self) -> bool {
-        self.anything_changed
     }
 }
 

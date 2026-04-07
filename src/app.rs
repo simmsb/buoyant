@@ -288,13 +288,12 @@ where
     /// If a rebuild is pending, it will be performed before rendering.
     /// Rebuilds can be eagerly triggered by calling [`rebuild()`](Self::rebuild()).
     ///
-    /// !!! `working_mem` must be at least as large as [`T::Renderables::SIZE`].div_ceil(8)
+    /// !!! `working_mem` must be at least as large as [`T::Renderables::SIZE`].`div_ceil(8)`
     pub fn render_animated_diffed<T, C>(
         &mut self,
         target: &mut T,
         color: &C,
         working_mem: &mut [u8],
-        panic_test: bool,
     ) where
         C: Copy,
         V: View<C, S>,
@@ -313,24 +312,14 @@ where
         let mut dirty_aabb = crate::primitives::aabb::StaticAABBTree::new();
         let mut drawn_aabb = crate::primitives::aabb::StaticAABBTree::new();
         let mut differ = Differ::new(bitslice, &mut dirty_aabb, &mut drawn_aabb);
-        differ.panic_test = panic_test;
-
-        println!("FRAME START!");
 
         // maybe we need to clear the target with color if this returns that the root view is invalidated?
-        let _ = self
+        let () = self
             .trees
             .target()
             .diff_with(self.trees.source(), &mut differ);
 
         differ.reset();
-
-        for (idx, value) in differ.array.iter().enumerate() {
-            let loc = differ.meta.get(&idx).map(|s| s.as_str()).unwrap_or("");
-            println!("({idx}): {value} @ {loc}")
-        }
-        println!("dirty: {}", differ.dirty_aabb);
-        println!("drawn: {}", differ.drawn_aabb);
 
         let domain = AnimationDomain::top_level(self.elapsed);
         Render::render_animated_diffed(

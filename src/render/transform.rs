@@ -30,12 +30,12 @@ impl<T: Diffable + IntrinsicShape> Diffable for Transform<T> {
         let r = differ.reserve();
         let transform = differ.transform(&self.transform);
 
-        if !changed {
-            self.inner.diff_with(&other.inner, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
+        } else {
+            self.inner.diff_with(&other.inner, differ);
         }
 
         differ.restore_transform(transform);

@@ -74,7 +74,7 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
             || self.size != other.size
-            || self.font as *const _ != other.font as *const _
+            || core::ptr::from_ref(self.font) != core::ptr::from_ref(other.font)
             || self.text.as_ref() != other.text.as_ref()
             || self.alignment != other.alignment
             || self.max_lines != other.max_lines

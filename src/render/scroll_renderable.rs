@@ -68,13 +68,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
         let r = differ.reserve();
 
 
-        if !changed {
-            self.inner.diff_with(&other.inner, differ);
-        } else {
+        if changed {
             differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
-        };
+        } else {
+            self.inner.diff_with(&other.inner, differ);
+        }
 
         differ.commit(r, changed || differ.is_region_dirty(self));
     }

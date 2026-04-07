@@ -12,7 +12,7 @@ pub struct Rectangle {
 }
 
 impl core::fmt::Display for Rectangle {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         write!(f, "{}@{}", self.origin, self.size)
     }
 }
@@ -34,6 +34,7 @@ impl Rectangle {
         )
     }
 
+    #[must_use] 
     pub const fn area(&self) -> u32 {
         self.size.area()
     }
