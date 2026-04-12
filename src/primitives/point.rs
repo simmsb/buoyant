@@ -5,6 +5,7 @@ use crate::primitives::{
     transform::{CoordinateSpaceTransform, LinearTransform},
 };
 
+#[derive(defmt::Format)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Point {
     pub x: i32,

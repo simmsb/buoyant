@@ -7,6 +7,7 @@ use crate::primitives::{
     transform::{CoordinateSpaceTransform, ScaleFactor},
 };
 
+#[derive(defmt::Format)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Size {
     pub width: u32,

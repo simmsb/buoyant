@@ -5,6 +5,7 @@ use crate::primitives::{
 };
 
 use super::{PathEl, Shape, ShapePathIter};
+#[derive(defmt::Format)]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Rectangle {
     pub origin: Point,

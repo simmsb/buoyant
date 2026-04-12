@@ -210,4 +210,18 @@ impl<const W: usize, const H: usize> Surface for FixedTextBuffer<W, H> {
             .into_iter()
             .for_each(|p| self.draw_character(p.point, p.color));
     }
+
+    fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I)
+    where
+        I: IntoIterator<Item = Self::Color> {
+        let x_end = area.origin.x + area.size.width as i32;
+        let y_end = area.origin.y + area.size.height as i32;
+        let points = (area.origin.y..y_end)
+            .flat_map(move |y| (area.origin.x..x_end).map(move |x| Point::new(x, y)));
+        self.draw_iter(
+            points
+                .zip(colors)
+                .map(|(point, color)| Pixel { color, point }),
+        );
+    }
 }
