@@ -63,7 +63,9 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.scroll_size != other.scroll_size
             || self.inner_size != other.inner_size
-            || differ.is_region_dirty(self);
+            || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
+            ;
 
         let r = differ.reserve();
 

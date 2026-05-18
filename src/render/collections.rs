@@ -13,17 +13,52 @@ macro_rules! impl_diffable_for_collections {
             fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
                 let note = differ.note();
 
+                let drawn_before = differ.drawn_aabb.clone();
+
                 $({
                     self.$n.diff_with(&other.$n, differ);
+                    // if let Some(bb) = self.$n.content_shape().bounding_box() {
+                    //     // println!("{} dirty: {}", $n, differ.dirty_aabb);
+                    //     // println!("{} drawn: {}", $n, differ.drawn_aabb);
+                    //     differ.copy_drawn_as_dirty(bb);
+                    // }
                 })+
 
+
+                // $({
+                //     if let Some(bb) = self.$n.content_shape().bounding_box() {
+                //         differ.clear_dirty_where_drawn(bb);
+                //     }
+                // })+
+
+                // println!("Middle step of collection diff");
+                // println!("dirty: {}", differ.dirty_aabb);
+                // println!("drawn: {}", differ.drawn_aabb);
+
+                *differ.drawn_aabb = drawn_before;
                 differ.restore(note);
 
                 // Two passes, as tuples are used for both overlapping and
                 // nonoverlapping renderables.
 
+                // println!("dirty: {}", differ.dirty_aabb);
+                // println!("drawn: {}", differ.drawn_aabb);
+
+                // $({
+                //     if let Some(bb) = self.$n.content_shape().bounding_box() {
+                //         differ.copy_drawn_as_dirty(bb);
+                //     }
+                // })+
+
                 $({
-                    self.$n.diff_with(&other.$n, differ);
+                    // self.$n.diff_with(&other.$n, differ);
+                    if let Some(bb) = self.$n.content_shape().bounding_box()
+                        && differ.dirty_aabb.any_intersects(&bb) {
+                            self.$n.diff_with(&other.$n, differ);
+                        }
+                    else {
+                        differ.ignore($type::SIZE);
+                    }
                 })+
             }
         }
@@ -117,13 +152,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for [T] {
     const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut Differ<'_>) {
-        differ.granular = false;
+        let g = differ.become_nongranular();
 
         for (a, b) in self.iter().zip(other) {
             a.diff_with(b, differ);
         }
 
-        differ.granular = true;
+        differ.restore_granularity(g);
     }
 }
 

@@ -1,10 +1,10 @@
 use super::geometry::Rectangle;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct StaticAABBTree<const CAP: usize> {
     nodes: [Node; CAP],
-    root: u16,
-    free_head: u16,
+    root: u8,
+    free_head: u8,
 }
 
 impl<const CAP: usize> core::fmt::Display for StaticAABBTree<CAP> {
@@ -16,7 +16,7 @@ impl<const CAP: usize> core::fmt::Display for StaticAABBTree<CAP> {
         // Recursive helper to format lines using a bitmask for indentation
         fn print_node<const C: usize>(
             tracker: &StaticAABBTree<C>,
-            node_idx: u16,
+            node_idx: u8,
             f: &mut core::fmt::Formatter<'_>,
             depth: usize,
             is_last: bool,
@@ -75,14 +75,14 @@ impl<const CAP: usize> core::fmt::Display for StaticAABBTree<CAP> {
     }
 }
 
-const NULL_NODE: u16 = u16::MAX;
+const NULL_NODE: u8 = u8::MAX;
 
 #[derive(Clone, Debug)]
 struct Node {
     rect: Rectangle,
-    left: u16,
-    right: u16,
-    parent: u16,
+    left: u8,
+    right: u8,
+    parent: u8,
 }
 
 impl Node {
@@ -96,7 +96,7 @@ impl Node {
 
 impl<const CAP: usize> StaticAABBTree<CAP> {
     /// Creates a new damage tracker with an initialized internal free-list.
-    #[must_use] 
+    #[must_use]
     pub const fn new() -> Self {
         let mut nodes = [Node::EMPTY; CAP];
         let mut free_head = NULL_NODE;
@@ -105,7 +105,7 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             free_head = 0;
             let mut i = 0;
             while i < CAP - 1 {
-                nodes[i].left = (i + 1) as u16;
+                nodes[i].left = (i + 1) as u8;
                 i += 1;
             }
             nodes[CAP - 1].left = NULL_NODE;
@@ -140,6 +140,14 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             let left = self.nodes[curr as usize].left;
             let right = self.nodes[curr as usize].right;
 
+            if self.nodes[left as usize].rect.contains_rect(&rect) {
+                return;
+            }
+
+            if self.nodes[right as usize].rect.contains_rect(&rect) {
+                return;
+            }
+
             let area_left = self.nodes[left as usize].rect.area();
             let area_right = self.nodes[right as usize].rect.area();
 
@@ -153,6 +161,10 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             } else {
                 curr = if area_left < area_right { left } else { right };
             }
+        }
+
+        if self.is_leaf(curr) && self.nodes[curr as usize].rect.contains_rect(&rect) {
+            return;
         }
 
         // 2. Expand hierarchy if we have capacity, otherwise fallback to union
@@ -193,8 +205,12 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             self.fix_upwards(internal_idx);
         } else {
             // Return nodes to free list if partially allocated
-            if let Some(idx) = new_leaf { self.free(idx); }
-            if let Some(idx) = new_internal { self.free(idx); }
+            if let Some(idx) = new_leaf {
+                self.free(idx);
+            }
+            if let Some(idx) = new_internal {
+                self.free(idx);
+            }
 
             // Capacity Resistant Edge-case: Force a union on the leaf.
             self.nodes[curr as usize].rect = self.nodes[curr as usize].rect.union(&rect);
@@ -202,9 +218,19 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
         }
     }
 
+    pub fn any_intersects(&self, target: &Rectangle) -> bool {
+        self.find_first_match(target, false).is_some()
+    }
+
+    pub fn any_within(&self, target: &Rectangle) -> bool {
+        self.find_first_match(target, true).is_some()
+    }
+
     /// Queries rectangles intersecting the target and calls the visitor function
     pub fn query_intersects<F: FnMut(&Rectangle)>(&self, target: &Rectangle, mut visitor: F) {
-        if self.root == NULL_NODE { return; }
+        if self.root == NULL_NODE {
+            return;
+        }
 
         let mut stack = [NULL_NODE; 64];
         let mut top = 0;
@@ -220,8 +246,38 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
                 if self.is_leaf(curr) {
                     visitor(&node.rect);
                 } else if top + 2 <= 64 {
-                    stack[top] = node.left; top += 1;
-                    stack[top] = node.right; top += 1;
+                    stack[top] = node.left;
+                    top += 1;
+                    stack[top] = node.right;
+                    top += 1;
+                }
+            }
+        }
+    }
+
+    pub fn query_overlaps<F: FnMut(&Rectangle)>(&self, target: &Rectangle, mut visitor: F) {
+        if self.root == NULL_NODE {
+            return;
+        }
+
+        let mut stack = [NULL_NODE; 64];
+        let mut top = 0;
+        stack[top] = self.root;
+        top += 1;
+
+        while top > 0 {
+            top -= 1;
+            let curr = stack[top];
+            let node = &self.nodes[curr as usize];
+
+            if target.contains_rect(&node.rect) {
+                if self.is_leaf(curr) {
+                    visitor(&node.rect);
+                } else if top + 2 <= 64 {
+                    stack[top] = node.left;
+                    top += 1;
+                    stack[top] = node.right;
+                    top += 1;
                 }
             }
         }
@@ -249,12 +305,12 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
 
     // --- Private Helper Methods ---
 
-    fn is_leaf(&self, idx: u16) -> bool {
+    fn is_leaf(&self, idx: u8) -> bool {
         let node = &self.nodes[idx as usize];
         node.left == NULL_NODE && node.right == NULL_NODE
     }
 
-    fn allocate(&mut self) -> Option<u16> {
+    fn allocate(&mut self) -> Option<u8> {
         if self.free_head == NULL_NODE {
             None
         } else {
@@ -264,26 +320,30 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
         }
     }
 
-    fn free(&mut self, idx: u16) {
+    fn free(&mut self, idx: u8) {
         self.nodes[idx as usize].left = self.free_head;
         self.free_head = idx;
     }
 
-    fn fix_upwards(&mut self, mut node_idx: u16) {
+    fn fix_upwards(&mut self, mut node_idx: u8) {
         while node_idx != NULL_NODE {
             let left = self.nodes[node_idx as usize].left;
             let right = self.nodes[node_idx as usize].right;
 
             if left != NULL_NODE && right != NULL_NODE {
-                let rect = self.nodes[left as usize].rect.union(&self.nodes[right as usize].rect);
+                let rect = self.nodes[left as usize]
+                    .rect
+                    .union(&self.nodes[right as usize].rect);
                 self.nodes[node_idx as usize].rect = rect;
             }
             node_idx = self.nodes[node_idx as usize].parent;
         }
     }
 
-    fn find_first_match(&self, target: &Rectangle, require_containment: bool) -> Option<u16> {
-        if self.root == NULL_NODE { return None; }
+    fn find_first_match(&self, target: &Rectangle, require_containment: bool) -> Option<u8> {
+        if self.root == NULL_NODE {
+            return None;
+        }
 
         let mut stack = [NULL_NODE; 64];
         let mut top = 0;
@@ -301,15 +361,17 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
                         return Some(curr);
                     }
                 } else if top + 2 <= 64 {
-                    stack[top] = node.left; top += 1;
-                    stack[top] = node.right; top += 1;
+                    stack[top] = node.left;
+                    top += 1;
+                    stack[top] = node.right;
+                    top += 1;
                 }
             }
         }
         None
     }
 
-    fn remove_leaf(&mut self, leaf_idx: u16) {
+    fn remove_leaf(&mut self, leaf_idx: u8) {
         let parent_idx = self.nodes[leaf_idx as usize].parent;
         self.free(leaf_idx);
 
@@ -317,7 +379,11 @@ impl<const CAP: usize> StaticAABBTree<CAP> {
             self.root = NULL_NODE;
         } else {
             let parent = self.nodes[parent_idx as usize].clone();
-            let sibling_idx = if parent.left == leaf_idx { parent.right } else { parent.left };
+            let sibling_idx = if parent.left == leaf_idx {
+                parent.right
+            } else {
+                parent.left
+            };
             let grandparent_idx = parent.parent;
 
             self.nodes[sibling_idx as usize].parent = grandparent_idx;

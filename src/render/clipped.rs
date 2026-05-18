@@ -24,6 +24,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Clipped<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.clip_rect != other.clip_rect
             || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
             ;
 
         let r = differ.reserve();

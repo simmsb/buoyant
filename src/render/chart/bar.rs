@@ -1,8 +1,8 @@
-use crate::{primitives::geometry::Rectangle, render::Diffable};
+use crate::primitives::transform::LinearTransform;
 use crate::primitives::{Interpolate, Point, Size};
 use crate::render::{AnimatedJoin, AnimationDomain, ContentShape, IntrinsicShape, Render};
 use crate::render_target::{RenderTarget, SolidBrush};
-use crate::primitives::transform::LinearTransform;
+use crate::{primitives::geometry::Rectangle, render::Diffable};
 
 /// A single bar's pixel-space geometry.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -37,13 +37,13 @@ impl<const N: usize> Diffable for BarRenderable<N> {
     fn diff_with(&self, other: &Self, differ: &mut crate::render::Differ<'_>) {
         let changed = self != other;
 
-        let invalidated = differ.is_region_dirty(self) || differ.is_region_dirty(other);
+        let invalidated = differ.is_region_dirty(self) || differ.is_region_overdrawn(self);
 
         differ.push(changed || invalidated);
 
         if changed {
-            differ.dirty_aabb_self(self);
             differ.dirty_aabb_self(other);
+            differ.drawn_aabb_self(self);
         }
     }
 }
@@ -59,7 +59,8 @@ impl<const N: usize> AnimatedJoin for BarRenderable<N> {
             self.bars[i].height =
                 i16::interpolate(source.bars[i].height, self.bars[i].height, domain.factor);
         }
-        self.frame = Rectangle::interpolate(source.frame.clone(), self.frame.clone(), domain.factor);
+        self.frame =
+            Rectangle::interpolate(source.frame.clone(), self.frame.clone(), domain.factor);
     }
 }
 

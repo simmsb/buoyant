@@ -45,7 +45,8 @@ impl<T: Diffable, U: core::fmt::Debug + PartialEq + Clone> Diffable for Animate<
             self.frame_time != other.frame_time
             // || self.value != other.value
             // || self.is_partial != other.is_partial
-            || differ.is_region_dirty(self);
+            || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self);
         // don't compare value, we care if the frame time is updating due to the animation running
 
         let r = differ.reserve();

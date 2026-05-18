@@ -24,7 +24,10 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.offset != other.offset || differ.is_region_dirty(self);
+        let changed = self.offset != other.offset
+            || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
+            ;
 
         let r = differ.reserve();
 

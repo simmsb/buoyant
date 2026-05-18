@@ -21,7 +21,9 @@ impl<T: Diffable, C: PartialEq + core::fmt::Debug> Diffable for HintBackground<T
     const SIZE: usize = 1 + T::SIZE;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.color != other.color || differ.is_region_dirty(self);
+        let changed = self.color != other.color
+            || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self);
 
         let r = differ.reserve();
 
@@ -86,7 +88,13 @@ impl<T: Render<C>, C: Interpolate + Copy + core::fmt::Debug> Render<C> for HintB
         differ: &mut super::Differ<'_>,
     ) {
         if differ.pop() {
-            target.stamp_background(render_target);
+            let color = Interpolate::interpolate(source.color, target.color, domain.factor);
+            render_target.with_layer(
+                |l| l.hint_background(color),
+                |render_target| {
+                    target.stamp_background(render_target);
+                },
+            );
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

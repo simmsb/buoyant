@@ -33,8 +33,12 @@ where
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.origin != other.origin
             || !core::ptr::addr_eq(core::ptr::from_ref(self.image), core::ptr::from_ref(other.image))
-            || differ.is_region_dirty(self);
+            || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
+            ;
+
         differ.push(changed);
+
         if changed {
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);

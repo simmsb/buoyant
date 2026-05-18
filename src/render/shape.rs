@@ -89,17 +89,21 @@ impl<T> StrokedShape<T> {
     }
 }
 
-impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
-    const SIZE: usize = 1 + T::SIZE;
+impl<T: PartialEq + Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
+    const SIZE: usize = 1;
 
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
-        let changed = self.line_width != other.line_width
+        let changed =
+            self.line_width != other.line_width
+            || self.shape != other.shape
             || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
             ;
 
+        let g = differ.become_nongranular();
         let r = differ.reserve();
+
         if changed {
-            differ.push_repeated(true, T::SIZE);
             differ.dirty_aabb_self(other);
             differ.drawn_aabb_self(self);
         } else {
@@ -107,6 +111,7 @@ impl<T: Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
         }
 
         differ.commit(r, changed || differ.is_region_dirty(self));
+        differ.restore_granularity(g);
     }
 }
 
@@ -123,7 +128,7 @@ impl<T: AsShapePrimitive> IntrinsicShape for StrokedShape<T> {
     }
 }
 
-impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive, C: Copy> Render<C> for StrokedShape<T> {
+impl<T: PartialEq + AnimatedJoin + Diffable + Clone + AsShapePrimitive, C: Copy> Render<C> for StrokedShape<T> {
     fn render(&self, render_target: &mut impl RenderTarget<ColorFormat = C>, style: &C) {
         render_target.stroke(
             &Stroke {
@@ -158,9 +163,6 @@ impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive, C: Copy> Render<C> f
     ) {
         if differ.pop() {
             Self::render_animated(render_target, source, target, style, domain);
-
-            // TODO: probably don't capture this
-            differ.ignore(T::SIZE);
         }
     }
 }

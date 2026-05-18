@@ -8,8 +8,11 @@
 
 use core::time::Duration;
 
-use crate::primitives::{geometry::{self, Rectangle}, transform::{CoordinateSpaceTransform as _, ScaleFactor}};
 use crate::primitives::{Point, aabb::StaticAABBTree};
+use crate::primitives::{
+    geometry::{self, Rectangle},
+    transform::{CoordinateSpaceTransform as _, ScaleFactor},
+};
 use crate::render_target::RenderTarget;
 use crate::{
     primitives::{geometry::Shape, transform::LinearTransform},
@@ -47,8 +50,8 @@ pub use image::Image;
 pub use offset::Offset;
 pub use one_of::{OneOf2, OneOf3, OneOf4, OneOf5, OneOf6, OneOf7, OneOf8, OneOf9, OneOf10};
 pub use opacity::Opacity;
-pub use scroll_renderable::ScrollRenderable;
 pub(crate) use scroll_renderable::ScrollDragging;
+pub use scroll_renderable::ScrollRenderable;
 pub use shade_subtree::ShadeSubtree;
 pub use shape::Capsule;
 pub use shape::Circle;
@@ -74,6 +77,9 @@ pub struct Differ<'a> {
 #[derive(Debug)]
 pub struct DifferReservation(usize);
 
+#[derive(Debug)]
+pub struct DifferGranularity(bool);
+
 #[derive(Debug, Clone, Copy)]
 pub struct DifferNote(usize);
 
@@ -93,6 +99,15 @@ impl<'a> Differ<'a> {
         }
     }
 
+    pub fn become_nongranular(&mut self) -> DifferGranularity {
+        let r = DifferGranularity(self.granular);
+        self.granular = false;
+        r
+    }
+
+    pub fn restore_granularity(&mut self, granularity: DifferGranularity) {
+        self.granular = granularity.0;
+    }
     pub fn restore_transform(&mut self, transform: LinearTransform) {
         self.transform = transform;
     }
@@ -105,10 +120,8 @@ impl<'a> Differ<'a> {
 
     pub fn offset(&mut self, offset: Point) -> LinearTransform {
         let transform = self.transform.clone();
-        self.transform.offset.x +=
-            (offset.x * self.transform.scale.cast_signed()).to_num::<i32>();
-        self.transform.offset.y +=
-            (offset.y * self.transform.scale.cast_signed()).to_num::<i32>();
+        self.transform.offset.x += (offset.x * self.transform.scale.cast_signed()).to_num::<i32>();
+        self.transform.offset.y += (offset.y * self.transform.scale.cast_signed()).to_num::<i32>();
         transform
     }
 
@@ -158,14 +171,14 @@ impl<'a> Differ<'a> {
         self.add_drawn_region(bbt);
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
         self.dirty_aabb.query_intersects(region, |_| result = true);
         result
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn test_drawn_region(&self, region: &Rectangle) -> bool {
         let mut result = false;
         self.drawn_aabb.query_intersects(region, |_| result = true);
@@ -179,6 +192,20 @@ impl<'a> Differ<'a> {
             .drain_contained(&region, |r| whole = whole.union(&r));
 
         self.dirty_aabb.insert(whole);
+    }
+
+    pub fn copy_drawn_as_dirty(&mut self, region: Rectangle) {
+        self.drawn_aabb.query_intersects(&region, |r| {
+            // println!("Dirtying drawn region {}", r);
+            self.dirty_aabb.insert(r.clone());
+        });
+    }
+
+    pub fn clear_dirty_where_drawn(&mut self, region: Rectangle) {
+        self.drawn_aabb.query_overlaps(&region, |r| {
+            // println!("Undirtying drawn region {}", r);
+            self.dirty_aabb.drain_contained(r, |_| {});
+        });
     }
 
     pub fn add_drawn_region(&mut self, region: Rectangle) {
@@ -253,7 +280,6 @@ impl<'a> Differ<'a> {
         let idx = self.idx;
         self.idx += 1;
 
-        
         self.array[idx]
     }
 

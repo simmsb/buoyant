@@ -51,7 +51,9 @@ impl<Subtree: Diffable, T: Transition + PartialEq> Diffable for TransitionOption
             ) => {
                 let changed = this_size != other_size
                     || this_transition != other_transition
-                    || differ.is_region_dirty(self);
+                    || differ.is_region_dirty(self)
+                    || differ.is_region_overdrawn(self)
+                    ;
                 let r = differ.reserve();
 
                 let offset = this_transition.transform(Direction::Out, 0, *this_size);

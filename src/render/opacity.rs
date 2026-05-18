@@ -24,6 +24,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Opacity<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.opacity != other.opacity
             || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
              ;
 
         let r = differ.reserve();

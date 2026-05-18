@@ -80,6 +80,7 @@ impl<T: AsRef<str>, F: Font> Diffable for Text<'_, T, F> {
             || self.max_lines != other.max_lines
             || self.wrap != other.wrap
             || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
             ;
 
         differ.push(changed);

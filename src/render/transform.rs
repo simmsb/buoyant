@@ -25,6 +25,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Transform<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.transform != other.transform
             || differ.is_region_dirty(self)
+            || differ.is_region_overdrawn(self)
             ;
 
         let r = differ.reserve();
