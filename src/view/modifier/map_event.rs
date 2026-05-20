@@ -98,7 +98,7 @@ impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut S) -> Option<Event>, S: 'st
                 focus,
             )
         } else {
-            EventResult::Deferred
+            EventResult::deferred()
         }
     }
 }

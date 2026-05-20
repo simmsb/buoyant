@@ -127,6 +127,6 @@ impl<S: ChartContent, Captures: ?Sized> ViewLayout<Captures> for Chart<S> {
         _state: &mut Self::State,
         _focus: &mut Self::FocusTree,
     ) -> EventResult {
-        EventResult::Deferred
+        EventResult::deferred()
     }
 }
