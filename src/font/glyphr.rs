@@ -1,7 +1,4 @@
-use embedded_graphics::{
-    pixelcolor::Rgb888,
-    prelude::PixelColor,
-};
+use embedded_graphics::{pixelcolor::Rgb888, prelude::PixelColor};
 
 use crate::primitives::{Interpolate, Point, Size, geometry::Rectangle};
 
@@ -10,13 +7,39 @@ use crate::font::{self};
 
 struct GlyphrMetrics<'a> {
     font: &'a glyphr::Font<'a>,
+    scale: u8,
+}
+
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+pub struct Scale(pub u8);
+
+impl Default for Scale {
+    fn default() -> Self {
+        Self(1)
+    }
+}
+
+impl Interpolate for Scale {
+    fn interpolate(from: Self, to: Self, amount: u8) -> Self {
+        Self(Interpolate::interpolate(from.0, to.0, amount))
+    }
+}
+
+impl font::CustomSize for Scale {
+    fn with_size(mut self, size: u32) -> Self {
+        self.0 = size as u8;
+        self
+    }
 }
 
 impl Font for glyphr::Font<'_> {
-    type Attributes = ();
+    type Attributes = Scale;
 
-    fn metrics(&self, _attributes: &Self::Attributes) -> impl super::FontMetrics {
-        GlyphrMetrics { font: self }
+    fn metrics(&self, attributes: &Self::Attributes) -> impl super::FontMetrics {
+        GlyphrMetrics {
+            font: self,
+            scale: attributes.0,
+        }
     }
 }
 
@@ -33,12 +56,17 @@ impl FontMetrics for GlyphrMetrics<'_> {
             glyph.height
         );
 
+        let scale = self.scale as i32;
+
         let y_offset = self.font.descent as i32
             + (self.font.ascent as i32 - glyph.ymin as i32 - glyph.height as i32);
 
         let region = Rectangle::new(
-            Point::new(glyph.xmin as i32, y_offset),
-            Size::new((glyph.width as i32) as u32, (glyph.height as i32) as u32),
+            Point::new(scale * glyph.xmin as i32, scale * y_offset),
+            Size::new(
+                (scale * glyph.width as i32) as u32,
+                (scale * glyph.height as i32) as u32,
+            ),
         );
 
         defmt::trace!("Rendered size of {} found to be {}", character, region);
@@ -54,10 +82,12 @@ impl FontMetrics for GlyphrMetrics<'_> {
             self.font.line_gap,
         );
 
+        let scale = self.scale as i32;
+
         super::VMetrics {
-            ascent: self.font.ascent as i32,
-            descent: self.font.descent as i32,
-            line_spacing: self.font.line_gap as i32,
+            ascent: scale * self.font.ascent as i32,
+            descent: scale * self.font.descent as i32,
+            line_spacing: scale * self.font.line_gap as i32,
         }
     }
 
@@ -72,12 +102,11 @@ impl FontMetrics for GlyphrMetrics<'_> {
             glyph.advance_width
         );
 
-        glyph.advance_width as u32
+        self.scale as u32 * glyph.advance_width as u32
     }
 }
 
 impl font::Sealed for glyphr::Font<'_> {}
-
 
 impl<C> FontRender<C> for glyphr::Font<'static>
 where
@@ -89,7 +118,7 @@ where
         offset: Point,
         color: C,
         background_color: Option<C>,
-        _attributes: &Self::Attributes,
+        attributes: &Self::Attributes,
         surface: &mut impl crate::render_target::Surface<Color = C>,
     ) {
         let background = background_color.unwrap_or(Rgb888::default().into());
@@ -109,24 +138,51 @@ where
             glyph.height,
         );
 
-        let Ok(pixels) = glyphr.pixels(character, *self) else {
-            return;
-        };
+        let scale = attributes.0;
 
-        let y_offset = self.ascent as i32 - glyph.ymin as i32 - glyph.height as i32;
+        if scale == 1 {
+            let Ok(pixels) = glyphr.pixels(character, *self) else {
+                return;
+            };
 
-        let region = Rectangle::new(
-            offset + Point::new(glyph.xmin as i32, y_offset),
-            Size::new(glyph.width as u32, glyph.height as u32),
-        );
+            let y_offset = self.ascent as i32 - glyph.ymin as i32 - glyph.height as i32;
 
-        surface.fill_contiguous(
-            &region,
-            pixels.map(|p| {
-                let scaled = u8::from(p) * 16;
+            let region = Rectangle::new(
+                offset + Point::new(glyph.xmin as i32, y_offset),
+                Size::new(glyph.width as u32, glyph.height as u32),
+            );
 
-                Interpolate::interpolate(background, color, scaled)
-            }),
-        );
+            surface.fill_contiguous(
+                &region,
+                pixels.map(|p| {
+                    let scaled = p.as_u8() * 16;
+
+                    Interpolate::interpolate(background, color, scaled)
+                }),
+            );
+        } else {
+            let Ok(pixels) = glyphr.pixels_scaled(character, *self, scale) else {
+                return;
+            };
+
+            let y_offset = self.ascent as i32 - glyph.ymin as i32 - glyph.height as i32;
+
+            let region = Rectangle::new(
+                offset + Point::new(scale as i32 * glyph.xmin as i32, scale as i32 * y_offset),
+                Size::new(
+                    scale as u32 * glyph.width as u32,
+                    scale as u32 * glyph.height as u32,
+                ),
+            );
+
+            surface.fill_contiguous(
+                &region,
+                pixels.map(|p| {
+                    let scaled = p.as_u8() * 16;
+
+                    Interpolate::interpolate(background, color, scaled)
+                }),
+            );
+        }
     }
 }

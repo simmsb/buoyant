@@ -23,6 +23,7 @@ mod geometry_group;
 mod hidden;
 mod hint_background;
 mod map_event;
+mod state_event;
 mod multiplex_focus;
 mod offset;
 mod opacity;
@@ -71,8 +72,10 @@ use crate::{
     focus::FocusGroup,
     layout::{Alignment, HorizontalAlignment, VerticalAlignment},
     primitives::{Point, UnitPoint},
-    view::{ViewMarker, modifier::map_event::MapEvent, shape::Shape},
+    view::{ViewMarker, modifier::map_event::MapEvent, modifier::state_event::StateEvent, shape::Shape},
 };
+
+use super::{Lens, ViewLayout};
 
 impl<T> ViewModifier for T where T: ViewMarker {}
 
@@ -534,6 +537,15 @@ pub trait ViewModifier: Sized + ViewMarker {
         MapEvent::new(self, mapping)
     }
 
+    /// Maps an event, delegating handling of the event to the modified view.
+    /// State in this is the view captures.
+    fn state_event<S: Default, F: Fn(&Event, &mut S) -> Option<Event>>(
+        self,
+        mapping: F,
+    ) -> StateEvent<Self, F> {
+        StateEvent::new(self, mapping)
+    }
+
     /// Maintains multiple independent focus trees.
     ///
     /// The provided groups must be disjoint.
@@ -786,5 +798,17 @@ pub trait ViewModifier: Sized + ViewMarker {
     /// group matches the specified group.
     fn unfocusable(self) -> Unfocusable<Self> {
         Unfocusable::new(self)
+    }
+
+    /// Helper method for [Lens]
+    fn map_captures<CaptureFn, OuterCapture, InnerCapture>(
+        self,
+        capture_fn: CaptureFn,
+    ) -> Lens<Self, CaptureFn>
+    where
+        CaptureFn: Fn(&mut OuterCapture) -> &mut InnerCapture,
+        Self: ViewLayout<InnerCapture>,
+    {
+        Lens::new(self, capture_fn)
     }
 }

@@ -110,6 +110,21 @@ impl<'a, T: AsRef<str>, F: Font> Text<'a, T, F> {
         self.wrap = strategy;
         self
     }
+
+    /// Replace the font attributes
+    pub fn with_attributes(mut self, attributes: F::Attributes) -> Self {
+        self.attributes = attributes;
+        self
+    }
+
+    /// Modify the font attributes with a mapping function.
+    pub fn with_mapped_attributes<Fn>(mut self, f: Fn) -> Self
+    where
+        Fn: FnOnce(F::Attributes) -> F::Attributes,
+    {
+        self.attributes = f(self.attributes);
+        self
+    }
 }
 
 /// Calculate the vertical extent (min y, max y) for a line of text.

@@ -61,6 +61,7 @@ display_as_debug = "0.5.1"
 color-backtrace = { version = "0.7.2", optional = true }
 glyphr = { version = "0.5.1", default-features = false, optional = true, git = "https://github.com/simmsb/glyphr" }
 defmt = "1.0.1"
+rotate-enum = { version = "0.1.2" }
 
 # [patch."https://github.com/simmsb/glyphr"]
 # glyphr-macros = { path = "../glyphr/glyphr-macros" }

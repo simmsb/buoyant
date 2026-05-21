@@ -14,6 +14,8 @@ use buoyant::{animation::Animation, match_view, view::prelude::*};
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
 use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, SimulatorEvent, Window};
 
+use self::state::OperationState;
+
 pub mod keys {
     use buoyant::event::Key;
 
@@ -25,6 +27,10 @@ pub mod keys {
     pub const CONFIRM_HOLD: Key = Key::Character('5');
     pub const POWER_CLICK: Key = Key::Character('6');
     pub const POWER_HOLD: Key = Key::Character('7');
+}
+
+pub mod ui {
+    pub use crate::*;
 }
 
 const fn root_view_differ_size<V, T, S>(f: fn(T) -> V) -> usize
@@ -101,9 +107,6 @@ fn main() {
 
     let mut diffing_mem = [0u8; root_view_differ_size(view::root_view)];
 
-    println!("{}", pretty_print_format(root_view_renderables_name(view::locked::pin_piece)));
-    println!("{}", pretty_print_format(root_view_renderables_name(|()| view::locked::confirm_button())));
-
     // Main event loop
     loop {
         // Sync app time with real wall clock time
@@ -121,6 +124,25 @@ fn main() {
             .for_each(|event| {
                 app.send(event);
             });
+
+        if let Some(action) = app.state().page_action {
+            let current_page = app.state().page;
+            let new_page = current_page.handle_action(action);
+            let mut state = app.state_mut();
+
+            if let Some(new_page) = new_page {
+                state.page = new_page;
+                state.page_action = None;
+            }
+        }
+
+        if let Some(next_speed_mode) = app.state().next_speed_mode {
+            if let OperationState::Active(a) = &mut app.state_mut().operation_state {
+                a.speed_mode = next_speed_mode;
+            }
+
+            app.state_mut().next_speed_mode = None;
+        }
 
         // Only render if active animation was reported or redraw needed
         if app.should_redraw() || target.clear_animation_status() {
