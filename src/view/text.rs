@@ -282,6 +282,7 @@ where
 
     fn build_state(&self, _captures: &mut Captures) -> Self::State {}
 
+    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,

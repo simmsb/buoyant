@@ -331,6 +331,7 @@ macro_rules! define_branch {
                 }
             }
 
+            #[inline(never)]
             fn layout(
                 &self,
                 offer: &ProposedDimensions,
@@ -362,6 +363,7 @@ macro_rules! define_branch {
                 }
             }
 
+            #[inline(never)]
             fn render_tree(
                 &self,
                 layout: &Self::Sublayout,
@@ -392,6 +394,7 @@ macro_rules! define_branch {
                 }
             }
 
+            #[inline(never)]
             fn handle_event(
                 &self,
                 event: &Event,

@@ -155,6 +155,7 @@ where
         (s, view.build_state(captures))
     }
 
+    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -167,6 +168,7 @@ where
         view.layout(offer, env, captures, &mut state.1)
     }
 
+    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -180,6 +182,7 @@ where
         view.render_tree(layout, origin, env, captures, &mut state.1)
     }
 
+    #[inline(never)]
     fn handle_event(
         &self,
         event: &Event,

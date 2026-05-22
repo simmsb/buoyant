@@ -83,6 +83,7 @@ where
         )
     }
 
+    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -95,6 +96,7 @@ where
             .nested()
     }
 
+    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -139,6 +141,7 @@ where
     }
 
     #[expect(clippy::too_many_lines)]
+    #[inline(never)]
     fn handle_event(
         &self,
         event: &crate::view::Event,

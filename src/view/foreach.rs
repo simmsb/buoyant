@@ -515,6 +515,7 @@ where
 }
 
 #[allow(clippy::too_many_lines)]
+#[inline(never)]
 fn layout_n(
     subviews: &[(i8, bool)],
     subviews_indices: &mut [usize],

@@ -51,6 +51,31 @@ impl<V: ViewMarker> ViewMarker for Padding<V> {
     type Transition = V::Transition;
 }
 
+#[inline(never)]
+fn layout_(
+    edges: &Edges,
+    padding: u32,
+    offer: &ProposedDimensions,
+) -> (ProposedDimensions, u32, u32) {
+    let (leading, trailing, top, bottom) = match edges {
+        Edges::All => (padding, padding, padding, padding),
+        Edges::Horizontal => (padding, padding, 0, 0),
+        Edges::Vertical => (0, 0, padding, padding),
+        Edges::Top => (0, 0, padding, 0),
+        Edges::Bottom => (0, 0, 0, padding),
+        Edges::Leading => (padding, 0, 0, 0),
+        Edges::Trailing => (0, padding, 0, 0),
+    };
+    let extra_width = leading + trailing;
+    let extra_height = top + bottom;
+    let padded_offer = ProposedDimensions {
+        width: offer.width - extra_width,
+        height: offer.height - extra_height,
+    };
+
+    (padded_offer, extra_width, extra_height)
+}
+
 impl<Captures: ?Sized, V> ViewLayout<Captures> for Padding<V>
 where
     V: ViewLayout<Captures>,
@@ -75,6 +100,7 @@ where
         self.inner.build_state(captures)
     }
 
+    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -82,27 +108,14 @@ where
         captures: &mut Captures,
         state: &mut Self::State,
     ) -> ResolvedLayout<Self::Sublayout> {
-        let (leading, trailing, top, bottom) = match self.edges {
-            Edges::All => (self.padding, self.padding, self.padding, self.padding),
-            Edges::Horizontal => (self.padding, self.padding, 0, 0),
-            Edges::Vertical => (0, 0, self.padding, self.padding),
-            Edges::Top => (0, 0, self.padding, 0),
-            Edges::Bottom => (0, 0, 0, self.padding),
-            Edges::Leading => (self.padding, 0, 0, 0),
-            Edges::Trailing => (0, self.padding, 0, 0),
-        };
-        let extra_width = leading + trailing;
-        let extra_height = top + bottom;
-        let padded_offer = ProposedDimensions {
-            width: offer.width - extra_width,
-            height: offer.height - extra_height,
-        };
+        let (padded_offer, extra_width, extra_height) = layout_(&self.edges, self.padding, offer);
         let mut child_layout = self.inner.layout(&padded_offer, env, captures, state);
         let padding_size = child_layout.resolved_size + Size::new(extra_width, extra_height);
         child_layout.resolved_size = padding_size;
         child_layout
     }
 
+    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -126,6 +139,7 @@ where
         )
     }
 
+    #[inline(never)]
     fn handle_event(
         &self,
         event: &crate::view::Event,

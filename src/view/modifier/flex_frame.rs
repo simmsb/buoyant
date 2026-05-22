@@ -190,6 +190,7 @@ where
         self.child.build_state(captures)
     }
 
+    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -280,6 +281,7 @@ where
         }
     }
 
+    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
