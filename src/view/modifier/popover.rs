@@ -1,12 +1,9 @@
-use core::time::Duration;
-
 use crate::{
-    animation::Animation,
     event::{Event, EventContext, EventResult},
     focus::{BoundaryBehavior, DefaultFocus, FocusAction, FocusDirection},
     layout::{HorizontalAlignment, ResolvedLayout, VerticalAlignment},
     primitives::Point,
-    render::{Animate, TransitionOption},
+    render::TransitionOption,
     view::{ViewLayout, ViewMarker},
 };
 
@@ -77,7 +74,7 @@ where
 impl<Inner: ViewMarker, Overlay: ViewMarker> ViewMarker for Popover<Inner, Overlay> {
     type Renderables = (
         Inner::Renderables,
-        Animate<TransitionOption<Overlay::Renderables, Overlay::Transition>, bool>,
+        TransitionOption<Overlay::Renderables, Overlay::Transition>,
     );
 
     type Transition = Inner::Transition;
@@ -171,15 +168,7 @@ where
             state.overlay_state = None;
             TransitionOption::None
         };
-        (
-            inner_tree,
-            Animate::new(
-                overlay_tree,
-                Animation::ease_out(Duration::from_millis(300)),
-                env.app_time(),
-                self.overlay.is_some(),
-            ),
-        )
+        (inner_tree, overlay_tree)
     }
 
     fn handle_event(
@@ -210,7 +199,7 @@ where
                     .overlay_state
                     .get_or_insert_with(|| overlay_view.build_state(captures));
 
-                if let TransitionOption::Some { subtree, .. } = &mut render_tree.1.subtree {
+                if let TransitionOption::Some { subtree, .. } = &mut render_tree.1 {
                     let result = overlay_view.handle_event(
                         &Event::Focus {
                             action: *focus_event,
@@ -279,7 +268,7 @@ where
             );
         }
 
-        match (&self.overlay, &mut render_tree.1.subtree) {
+        match (&self.overlay, &mut render_tree.1) {
             (Some(overlay_view), TransitionOption::Some { subtree, .. }) => {
                 let overlay_state = state
                     .overlay_state

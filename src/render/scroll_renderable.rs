@@ -14,7 +14,7 @@ pub(crate) enum ScrollDragging {
 
 // This hacks together scroll functionality from existing primitives, but
 // a bespoke implementation will eventually replace it
-type ScrolInner<T> = Offset<Animate<(Offset<T>, Option<Capsule>, Option<Capsule>), ScrollDragging>>;
+type ScrolInner<T> = Offset<(Offset<T>, Option<Capsule>, Option<Capsule>)>;
 
 /// This is just a metadata structure that allows [`ScrollView`] to mutate its offset and scroll bars
 /// without recomputing a new view tree.
@@ -35,11 +35,11 @@ impl<T> ScrollRenderable<T> {
     }
 
     pub fn offset(&self) -> Point {
-        self.inner.subtree.subtree.0.offset
+        self.inner.subtree.0.offset
     }
 
     pub fn offset_mut(&mut self) -> &mut Point {
-        &mut self.inner.subtree.subtree.0.offset
+        &mut self.inner.subtree.0.offset
     }
 
     /// The bounds of the scrollview itself
@@ -48,12 +48,12 @@ impl<T> ScrollRenderable<T> {
     }
 
     pub fn inner_mut(&mut self) -> &mut T {
-        &mut self.inner.subtree.subtree.0.subtree
+        &mut self.inner.subtree.0.subtree
     }
 
     pub(crate) fn set_bars(&mut self, horizontal: Option<Capsule>, vertical: Option<Capsule>) {
-        self.inner.subtree.subtree.1 = horizontal;
-        self.inner.subtree.subtree.2 = vertical;
+        self.inner.subtree.1 = horizontal;
+        self.inner.subtree.2 = vertical;
     }
 }
 
