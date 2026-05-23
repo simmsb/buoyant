@@ -4,25 +4,25 @@ use crate::{
 };
 
 #[derive(Debug)]
-pub struct StateEvent<V, F> {
+pub struct CapturesEvent<V, F> {
     inner: V,
     mapping: F,
 }
 
-impl<V, F> StateEvent<V, F> {
+impl<V, F> CapturesEvent<V, F> {
     #[must_use]
     pub const fn new(inner: V, mapping: F) -> Self {
         Self { inner, mapping }
     }
 }
 
-impl<V: ViewMarker, F> ViewMarker for StateEvent<V, F> {
+impl<V: ViewMarker, F> ViewMarker for CapturesEvent<V, F> {
     type Renderables = V::Renderables;
     type Transition = V::Transition;
 }
 
-impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut V::State) -> Option<Event>> ViewLayout<C>
-    for StateEvent<V, F>
+impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut C) -> Option<Event>> ViewLayout<C>
+    for CapturesEvent<V, F>
 {
     type State = V::State;
 
@@ -76,7 +76,7 @@ impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut V::State) -> Option<Event>>
         state: &mut Self::State,
         focus: &mut Self::FocusTree,
     ) -> crate::event::EventResult {
-        let mapped_event = (self.mapping)(event, state);
+        let mapped_event = (self.mapping)(event, captures);
         if let Some(mapped_event) = mapped_event {
             self.inner
                 .handle_event(&mapped_event, context, render_tree, captures, state, focus)

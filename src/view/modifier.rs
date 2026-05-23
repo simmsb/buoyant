@@ -10,6 +10,7 @@ pub mod aspect_ratio;
 mod background;
 mod background_color;
 mod bound_focus;
+mod captures_event;
 mod clipped;
 mod content_shape;
 mod erase_captures;
@@ -23,7 +24,6 @@ mod geometry_group;
 mod hidden;
 mod hint_background;
 mod map_event;
-mod state_event;
 mod multiplex_focus;
 mod offset;
 mod opacity;
@@ -72,10 +72,13 @@ use crate::{
     focus::FocusGroup,
     layout::{Alignment, HorizontalAlignment, VerticalAlignment},
     primitives::{Point, UnitPoint},
-    view::{ViewMarker, modifier::map_event::MapEvent, modifier::state_event::StateEvent, shape::Shape},
+    view::{
+        ViewMarker, modifier::captures_event::CapturesEvent, modifier::map_event::MapEvent,
+        shape::Shape,
+    },
 };
 
-use super::{Lens, ViewLayout};
+use super::{Lens, StatefulLens, ViewLayout};
 
 impl<T> ViewModifier for T where T: ViewMarker {}
 
@@ -539,11 +542,11 @@ pub trait ViewModifier: Sized + ViewMarker {
 
     /// Maps an event, delegating handling of the event to the modified view.
     /// State in this is the view captures.
-    fn state_event<S: Default, F: Fn(&Event, &mut S) -> Option<Event>>(
+    fn captures_event<C, F: Fn(&Event, &mut C) -> Option<Event>>(
         self,
         mapping: F,
-    ) -> StateEvent<Self, F> {
-        StateEvent::new(self, mapping)
+    ) -> CapturesEvent<Self, F> {
+        CapturesEvent::new(self, mapping)
     }
 
     /// Maintains multiple independent focus trees.
@@ -810,5 +813,19 @@ pub trait ViewModifier: Sized + ViewMarker {
         Self: ViewLayout<InnerCapture>,
     {
         Lens::new(self, capture_fn)
+    }
+
+    /// Helper method for [Lens]
+    fn map_captures_stateful<S, CaptureFn, InitFn, OuterCapture, InnerCapture>(
+        self,
+        capture_fn: CaptureFn,
+        init_fn: InitFn,
+    ) -> StatefulLens<S, Self, CaptureFn, InitFn>
+    where
+        CaptureFn: for<'a> Fn(&'a mut S, &'a mut OuterCapture) -> &'a mut InnerCapture,
+        InitFn: Fn(&mut OuterCapture) -> (S, InnerCapture),
+        Self: ViewLayout<InnerCapture>,
+    {
+        StatefulLens::new(self, capture_fn, init_fn)
     }
 }

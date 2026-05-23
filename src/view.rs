@@ -31,7 +31,7 @@ mod zstack;
 #[cfg(feature = "embedded-graphics")]
 pub use as_drawable::AsDrawable;
 pub use button::{Button, ButtonState};
-pub use capturing::Lens;
+pub use capturing::{Lens, StatefulLens};
 pub use chart::Chart;
 pub use divider::Divider;
 pub use empty_view::EmptyView;
@@ -55,16 +55,17 @@ pub use zstack::ZStack;
 /// A collection of commonly used types for building views.
 pub mod prelude {
     pub use super::aspect_ratio::{ContentMode, Ratio};
+    pub use super::chart::{
+        BarMark, BarSeries, ChartContent, ColoredSeries, LineMark, LineSeries, PointMark,
+        PointSeries,
+    };
     pub use super::modifier::ViewModifier;
     #[cfg(feature = "embedded-graphics")]
     pub use super::{AsDrawable, Image};
     pub use super::{
         Button, ButtonState, Chart, Divider, EmptyView, ForEach, GeometryReader, HStack, Lens,
-        Paginate, Rotary, ScrollView, Spacer, Text, VStack, View, ViewLayout, ViewThatFits, ZStack,
-    };
-    pub use super::chart::{
-        BarMark, BarSeries, ChartContent, ColoredSeries, LineMark, LineSeries, PointMark,
-        PointSeries,
+        Paginate, Rotary, ScrollView, Spacer, StatefulLens, Text, VStack, View, ViewLayout,
+        ViewThatFits, ZStack,
     };
     pub use super::{FitAxis, HorizontalTextAlignment, padding::Edges};
     pub use crate::animation::Animation;
@@ -99,7 +100,10 @@ use crate::{
 ///     Rectangle.foreground_color(Rgb888::RED)
 /// }
 /// ```
-pub trait View<Color: Copy, Captures: ?Sized>: ViewLayout<Captures, Renderables: Render<Color>> {}
+pub trait View<Color: Copy, Captures: ?Sized>:
+    ViewLayout<Captures, Renderables: Render<Color>>
+{
+}
 
 impl<T, Color: Copy, Captures: ?Sized> View<Color, Captures> for T where
     Self: ViewLayout<Captures, Renderables: Render<Color>>
