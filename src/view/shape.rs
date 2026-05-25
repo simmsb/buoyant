@@ -101,7 +101,6 @@ where
         self.shape.build_state(captures)
     }
 
-    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -112,7 +111,6 @@ where
         self.shape.layout(offer, env, captures, state)
     }
 
-    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -134,7 +132,6 @@ where
         )
     }
 
-    #[inline(never)]
     fn handle_event(
         &self,
         _event: &crate::view::Event,

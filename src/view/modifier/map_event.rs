@@ -53,7 +53,6 @@ impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut S) -> Option<Event>, S: 'st
         (S::default(), self.inner.build_state(captures))
     }
 
-    #[inline(never)]
     fn layout(
         &self,
         offer: &crate::primitives::ProposedDimensions,
@@ -64,7 +63,6 @@ impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut S) -> Option<Event>, S: 'st
         self.inner.layout(offer, env, captures, &mut state.1)
     }
 
-    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -77,7 +75,6 @@ impl<C: ?Sized, V: ViewLayout<C>, F: Fn(&Event, &mut S) -> Option<Event>, S: 'st
             .render_tree(layout, origin, env, captures, &mut state.1)
     }
 
-    #[inline(never)]
     fn handle_event(
         &self,
         event: &Event,

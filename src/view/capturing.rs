@@ -61,7 +61,6 @@ impl<
         self.inner.build_state(inner_captures)
     }
 
-    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -73,7 +72,6 @@ impl<
             .layout(offer, env, (self.capture_fn)(captures), state)
     }
 
-    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -86,7 +84,6 @@ impl<
             .render_tree(layout, origin, env, (self.capture_fn)(captures), state)
     }
 
-    #[inline(never)]
     fn handle_event(
         &self,
         event: &super::Event,

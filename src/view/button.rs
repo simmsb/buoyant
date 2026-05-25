@@ -164,7 +164,6 @@ where
         (initial_state, inner_state)
     }
 
-    #[inline(never)]
     fn layout(
         &self,
         offer: &ProposedDimensions,
@@ -179,7 +178,6 @@ where
         }
     }
 
-    #[inline(never)]
     fn render_tree(
         &self,
         layout: &Self::Sublayout,
@@ -197,7 +195,6 @@ where
         )
     }
 
-    #[inline(never)]
     fn handle_event(
         &self,
         event: &Event,

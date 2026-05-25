@@ -22,11 +22,11 @@ pub struct VStack<T> {
     spacing: u32,
 }
 
-struct VerticalEnvironment<'a, T: ?Sized> {
+struct VerticalEnvironment<'a, T> {
     inner_environment: &'a T,
 }
 
-impl<T: ?Sized + LayoutEnvironment> LayoutEnvironment for VerticalEnvironment<'_, T> {
+impl<T: LayoutEnvironment> LayoutEnvironment for VerticalEnvironment<'_, T> {
     fn layout_direction(&self) -> LayoutDirection {
         LayoutDirection::Vertical
     }
@@ -36,18 +36,10 @@ impl<T: ?Sized + LayoutEnvironment> LayoutEnvironment for VerticalEnvironment<'_
     }
 }
 
-impl<'a, T: ?Sized + LayoutEnvironment> From<&'a T> for VerticalEnvironment<'a, T> {
+impl<'a, T: LayoutEnvironment> From<&'a T> for VerticalEnvironment<'a, T> {
     fn from(environment: &'a T) -> Self {
         Self {
             inner_environment: environment,
-        }
-    }
-}
-
-impl<'a> VerticalEnvironment<'a, dyn LayoutEnvironment + 'a> {
-    fn from_dyn<T: LayoutEnvironment>(environment: &'a T) -> Self {
-        Self {
-            inner_environment: environment as &dyn LayoutEnvironment,
         }
     }
 }
@@ -96,13 +88,14 @@ impl<T: ViewMarker> VStack<T> {
     }
 }
 
-fn layout_n<'a>(
-    subviews: &'a mut [(&'a mut dyn VStackLayoutPartGo, i8, bool)],
-    env: &'a VerticalEnvironment<dyn LayoutEnvironment + 'a>,
+type LayoutFn<'a> = &'a mut dyn FnMut(ProposedDimensions) -> Dimensions;
+
+fn layout_n(
+    subviews: &mut [(LayoutFn, i8, bool)],
     offer: ProposedDimensions,
     spacing: u32,
-    flexibilities: &'a mut [Dimension],
-    subviews_indices: &'a mut [usize],
+    flexibilities: &mut [Dimension],
+    subviews_indices: &mut [usize],
 ) -> Dimensions {
     let subview_count = subviews.len();
     // These asserts should be provably true, and optimized away in release builds
@@ -121,7 +114,7 @@ fn layout_n<'a>(
             // layout must be called at least once on every view to avoid panic unwrapping the
             // resolved layout.
             // TODO: Allowing layouts to return a cheap "empty" layout could avoid this?
-            let dimensions = layout_fn.do_layout(env, offer);
+            let dimensions = layout_fn(offer);
             if *is_empty {
                 continue;
             }
@@ -150,14 +143,14 @@ fn layout_n<'a>(
     };
 
     for index in 0..subview_count {
-        let minimum_dimension = subviews[index].0.do_layout(env, min_proposal);
+        let minimum_dimension = subviews[index].0(min_proposal);
         // skip any further work for empty views
         if subviews[index].2 {
             num_empty_views += 1;
             continue;
         }
 
-        let maximum_dimension = subviews[index].0.do_layout(env, max_proposal);
+        let maximum_dimension = subviews[index].0(max_proposal);
         flexibilities[index] = maximum_dimension.height - minimum_dimension.height;
     }
 
@@ -206,13 +199,10 @@ fn layout_n<'a>(
         for index in group_indices {
             let height_fraction =
                 remaining_height / remaining_group_size + remaining_height % remaining_group_size;
-            let size = subviews[*index].0.do_layout(
-                env,
-                ProposedDimensions {
-                    width: offer.width,
-                    height: ProposedDimension::Exact(height_fraction),
-                },
-            );
+            let size = subviews[*index].0(ProposedDimensions {
+                width: offer.width,
+                height: ProposedDimension::Exact(height_fraction),
+            });
             remaining_height = remaining_height.saturating_sub(size.height.into());
             remaining_group_size -= 1;
             max_width = max_width.max(size.width);
@@ -236,39 +226,6 @@ use paste::paste;
 macro_rules! count {
     () => (const { 0 });
     ($head:tt $(, $rest:tt)*) => (const { 1 + count!($($rest),*) });
-}
-
-struct VStackLayoutPart<'a, Captures: ?Sized, T: ViewLayout<Captures>> {
-    captures: &'a RefCell<&'a mut Captures>,
-    item: &'a T,
-    state: &'a mut <T as ViewLayout<Captures>>::State,
-    writeback: &'a mut Option<ResolvedLayout<<T as ViewLayout<Captures>>::Sublayout>>,
-}
-
-trait VStackLayoutPartGo {
-    fn do_layout<'a>(
-        &mut self,
-        env: &'a VerticalEnvironment<dyn LayoutEnvironment + 'a>,
-        proposed: ProposedDimensions,
-    ) -> Dimensions;
-}
-
-impl<'a, Captures, T> VStackLayoutPartGo for VStackLayoutPart<'a, Captures, T>
-where
-    T: ViewLayout<Captures>,
-    Captures: ?Sized,
-{
-    fn do_layout<'b>(
-        &mut self,
-        env: &'b VerticalEnvironment<dyn LayoutEnvironment + 'b>,
-        proposed: ProposedDimensions,
-    ) -> Dimensions {
-        let mut captures = self.captures.borrow_mut();
-        let layout = self.item.layout(&proposed, env, &mut *captures, self.state);
-        let size = layout.resolved_size;
-        *self.writeback = Some(layout);
-        size
-    }
 }
 
 macro_rules! impl_view_for_vstack {
@@ -299,7 +256,6 @@ macro_rules! impl_view_for_vstack {
                 ($(self.items.$n.build_state(captures)),+)
             }
 
-            #[inline(never)]
             fn layout(
                 &self,
                 offer: &ProposedDimensions,
@@ -308,7 +264,7 @@ macro_rules! impl_view_for_vstack {
                 state: &mut Self::State,
             ) -> ResolvedLayout<Self::Sublayout> {
                 const N: usize = count!($($n),+);
-                let env = &VerticalEnvironment::from_dyn(env);
+                let env = &VerticalEnvironment::from(env);
 
                 let captures_cell = RefCell::new(captures);
 
@@ -317,23 +273,25 @@ macro_rules! impl_view_for_vstack {
                 )+
 
                 $(
-                    let mut [<p$n>] = VStackLayoutPart {
-                        captures: &captures_cell,
-                        item: &self.items.$n,
-                        state: &mut state.$n,
-                        writeback: &mut [<c$n>],
+                    let mut [<f$n>] = |size: ProposedDimensions| {
+                        // Calls to this layout cannot overlap, so this borrow will not conflict
+                        let mut captures = captures_cell.borrow_mut();
+                        let layout = self.items.$n.layout(&size, env, &mut *captures, &mut state.$n);
+                        let size = layout.resolved_size;
+                        [<c$n>] = Some(layout);
+                        size
                     };
                 )+
 
-                let mut subviews: [(&mut dyn VStackLayoutPartGo, i8, bool); N] = [
+                let mut subviews: [(LayoutFn, i8, bool); N] = [
                     $(
-                        (&mut [<p$n>], self.items.$n.priority(), self.items.$n.is_empty()),
+                        (&mut [<f$n>], self.items.$n.priority(), self.items.$n.is_empty()),
                     )+
                 ];
 
                 let mut flexibilities: [Dimension; N] = [Dimension::new(0); N];
                 let mut subviews_indices: [usize; N] = [0; N];
-                let total_size = layout_n(&mut subviews, env, *offer, self.spacing, &mut flexibilities, &mut subviews_indices);
+                let total_size = layout_n(&mut subviews, *offer, self.spacing, &mut flexibilities, &mut subviews_indices);
                 ResolvedLayout {
                     sublayouts: ($([<c$n>].unwrap()),+),
                     resolved_size: total_size,
@@ -349,7 +307,7 @@ macro_rules! impl_view_for_vstack {
                 captures: &mut Captures,
                 state: &mut Self::State,
             ) -> Self::Renderables {
-                let env = &VerticalEnvironment::from_dyn(env);
+                let env = &VerticalEnvironment::from(env);
                 let mut height_offset = 0;
 
                 $(

@@ -89,7 +89,6 @@ impl<T> PartialEq for HStack<T> {
 
 type LayoutFn<'a> = &'a mut dyn FnMut(ProposedDimensions) -> Dimensions;
 
-#[inline(never)]
 fn layout_n(
     subviews: &mut [(LayoutFn, i8, bool)],
     offer: ProposedDimensions,
@@ -260,7 +259,6 @@ macro_rules! impl_view_for_hstack {
                 ($(self.items.$n.build_state(captures)),+)
             }
 
-            #[inline(never)]
             fn layout(
                 &self,
                 offer: &ProposedDimensions,
@@ -306,7 +304,6 @@ macro_rules! impl_view_for_hstack {
             }
 
             #[allow(unused_assignments)]
-            #[inline(never)]
             fn render_tree(
                 &self,
                 layout: &Self::Sublayout,
@@ -343,7 +340,6 @@ macro_rules! impl_view_for_hstack {
                 ($([<subtree_$n>]),+)
             }
 
-            #[inline(never)]
             fn handle_event(
                 &self,
                 event: &Event,
