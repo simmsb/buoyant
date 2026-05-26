@@ -1,9 +1,9 @@
-use fixed::{traits::ToFixed, types::I18F14};
+use fixed::{traits::ToFixed, types::I9F7};
 use fixed_macro::fixed;
 
 use crate::primitives::{Interpolate, Point, geometry::Rectangle};
 
-type FixedPoint = I18F14;
+type FixedPoint = I9F7;
 
 /// A normalized point in a view's coordinate space.
 ///
@@ -40,72 +40,72 @@ impl UnitPoint {
     #[must_use]
     pub const fn top_leading() -> Self {
         Self {
-            x: fixed!(0.0: I18F14),
-            y: fixed!(0.0: I18F14),
+            x: fixed!(0.0: I9F7),
+            y: fixed!(0.0: I9F7),
         }
     }
 
     #[must_use]
     pub const fn top() -> Self {
         Self {
-            x: fixed!(0.5: I18F14),
-            y: fixed!(0.0: I18F14),
+            x: fixed!(0.5: I9F7),
+            y: fixed!(0.0: I9F7),
         }
     }
 
     #[must_use]
     pub const fn top_trailing() -> Self {
         Self {
-            x: fixed!(1.0: I18F14),
-            y: fixed!(0.0: I18F14),
+            x: fixed!(1.0: I9F7),
+            y: fixed!(0.0: I9F7),
         }
     }
 
     #[must_use]
     pub const fn leading() -> Self {
         Self {
-            x: fixed!(0.0: I18F14),
-            y: fixed!(0.5: I18F14),
+            x: fixed!(0.0: I9F7),
+            y: fixed!(0.5: I9F7),
         }
     }
 
     #[must_use]
     pub const fn center() -> Self {
         Self {
-            x: fixed!(0.5: I18F14),
-            y: fixed!(0.5: I18F14),
+            x: fixed!(0.5: I9F7),
+            y: fixed!(0.5: I9F7),
         }
     }
 
     #[must_use]
     pub const fn trailing() -> Self {
         Self {
-            x: fixed!(1.0: I18F14),
-            y: fixed!(0.5: I18F14),
+            x: fixed!(1.0: I9F7),
+            y: fixed!(0.5: I9F7),
         }
     }
 
     #[must_use]
     pub const fn bottom_leading() -> Self {
         Self {
-            x: fixed!(0.0: I18F14),
-            y: fixed!(1.0: I18F14),
+            x: fixed!(0.0: I9F7),
+            y: fixed!(1.0: I9F7),
         }
     }
 
     #[must_use]
     pub const fn bottom() -> Self {
         Self {
-            x: fixed!(0.5: I18F14),
-            y: fixed!(1.0: I18F14),
+            x: fixed!(0.5: I9F7),
+            y: fixed!(1.0: I9F7),
         }
     }
 
     #[must_use]
     pub const fn bottom_trailing() -> Self {
         Self {
-            x: fixed!(1.0: I18F14),
-            y: fixed!(1.0: I18F14),
+            x: fixed!(1.0: I9F7),
+            y: fixed!(1.0: I9F7),
         }
     }
 }

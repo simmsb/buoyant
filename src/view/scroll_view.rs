@@ -33,13 +33,13 @@ struct ScrollBarConfig {
     /// When to display scroll bars.
     visibility: ScrollBarVisibility,
     /// Padding applied around all edges of scroll bars.
-    padding: u32,
+    padding: u16,
     /// Bar width.
-    width: u32,
+    width: u16,
     /// Whether the scroll bars overlap the content of the scroll view.
     overlaps_content: bool,
     /// The minimum length of the scroll bars.
-    minimum_bar_length: u32,
+    minimum_bar_length: u16,
 }
 
 impl Default for ScrollBarConfig {
@@ -155,14 +155,14 @@ impl<Inner: ViewMarker> ScrollView<Inner> {
 
     /// Sets the minimum length of the scrollbar.
     #[must_use]
-    pub fn with_minimum_bar_length(mut self, length: u32) -> Self {
+    pub fn with_minimum_bar_length(mut self, length: u16) -> Self {
         self.bar_config.minimum_bar_length = length;
         self
     }
 
     /// Sets the padding which is applied to all edges of the scrollbar.
     #[must_use]
-    pub fn with_bar_padding(mut self, padding: u32) -> Self {
+    pub fn with_bar_padding(mut self, padding: u16) -> Self {
         self.bar_config.padding = padding;
         self
     }
@@ -171,7 +171,7 @@ impl<Inner: ViewMarker> ScrollView<Inner> {
     ///
     /// This applies to both horizontal and vertical scrollbars.
     #[must_use]
-    pub fn with_bar_width(mut self, width: u32) -> Self {
+    pub fn with_bar_width(mut self, width: u16) -> Self {
         self.bar_config.width = width;
         self
     }
@@ -274,12 +274,12 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
 
         let (inner_width, inner_height) = match self.direction {
             ScrollDirection::Vertical => (
-                ProposedDimension::Exact(Into::<u32>::into(layout.width) - horizontal_padding),
+                ProposedDimension::Exact(Into::<u16>::into(layout.width) - horizontal_padding),
                 ProposedDimension::Compact,
             ),
             ScrollDirection::Horizontal => (
                 ProposedDimension::Compact,
-                ProposedDimension::Exact(Into::<u32>::into(layout.height) - vertical_padding),
+                ProposedDimension::Exact(Into::<u16>::into(layout.height) - vertical_padding),
             ),
             ScrollDirection::Both => (ProposedDimension::Compact, ProposedDimension::Compact),
         };
@@ -289,13 +289,13 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
             .inner
             .layout(&inner_offer, env, captures, &mut state.inner_state);
 
-        let scroll_view_width: u32 = layout.width.into();
-        let scroll_view_height: u32 = layout.height.into();
-        let inner_view_width: u32 = inner_layout.resolved_size.width.0;
-        let inner_view_height: u32 = inner_layout.resolved_size.height.0;
+        let scroll_view_width: u16 = layout.width.into();
+        let scroll_view_height: u16 = layout.height.into();
+        let inner_view_width: u16 = inner_layout.resolved_size.width.0;
+        let inner_view_height: u16 = inner_layout.resolved_size.height.0;
 
-        let permitted_offset_x = inner_view_width.saturating_sub(scroll_view_width) as i32;
-        let permitted_offset_y = inner_view_height.saturating_sub(scroll_view_height) as i32;
+        let permitted_offset_x = inner_view_width.saturating_sub(scroll_view_width) as i16;
+        let permitted_offset_y = inner_view_height.saturating_sub(scroll_view_height) as i16;
 
         // Adjust scroll offset if pinning is enabled
         if state.interaction == ScrollInteraction::Idle
@@ -660,13 +660,13 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
             >= (render_tree
                 .inner_size
                 .height
-                .saturating_sub(render_tree.scroll_size.height)) as i32
+                .saturating_sub(render_tree.scroll_size.height)) as i16
             && state.scroll_offset.y != 0;
         let should_pin_trailing = -state.scroll_offset.x
             >= (render_tree
                 .inner_size
                 .width
-                .saturating_sub(render_tree.scroll_size.width)) as i32
+                .saturating_sub(render_tree.scroll_size.width)) as i16
             && state.scroll_offset.x != 0;
 
         state.content_pinning = match (should_pin_trailing, should_pin_bottom) {
@@ -684,12 +684,12 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
                     .inner_size
                     .width
                     .saturating_sub(render_tree.scroll_size.width)
-                    as i32;
+                    as i16;
                 let permitted_offset_y = render_tree
                     .inner_size
                     .height
                     .saturating_sub(render_tree.scroll_size.height)
-                    as i32;
+                    as i16;
 
                 // Movement beyond the bounds is reduced by half while dragging
                 let mut offset = state.scroll_offset;
@@ -765,7 +765,7 @@ impl<V> ScrollView<V> {
                 .saturating_sub(self.bar_config.width);
 
             Some(Capsule::new(
-                origin + Point::new(bar_x as i32, bar_y),
+                origin + Point::new(bar_x as i16, bar_y),
                 Size::new(self.bar_config.width, bar_height),
             ))
         } else {
@@ -791,7 +791,7 @@ impl<V> ScrollView<V> {
                 .saturating_sub(self.bar_config.width);
 
             Some(Capsule::new(
-                origin + Point::new(bar_x, bar_y as i32),
+                origin + Point::new(bar_x, bar_y as i16),
                 Size::new(bar_width, self.bar_config.width),
             ))
         } else {
@@ -806,18 +806,18 @@ impl<V> ScrollView<V> {
 ///
 /// Returns a tuple containing the position of the scrollbar and its length.
 fn bar_size(
-    scroll_view_length: u32,
-    inner_view_length: u32,
-    scroll_offset: i32,
-    min_length: u32,
-    leading_padding: u32,
-    trailing_padding: u32,
-) -> (i32, u32) {
+    scroll_view_length: u16,
+    inner_view_length: u16,
+    scroll_offset: i16,
+    min_length: u16,
+    leading_padding: u16,
+    trailing_padding: u16,
+) -> (i16, u16) {
     let overscroll_amount = if scroll_offset > 0 {
-        scroll_offset as u32
+        scroll_offset as u16
     } else {
         let max_offset = inner_view_length.saturating_sub(scroll_view_length);
-        ((-scroll_offset) as u32).saturating_sub(max_offset)
+        ((-scroll_offset) as u16).saturating_sub(max_offset)
     };
 
     let available_space = scroll_view_length.saturating_sub(leading_padding + trailing_padding);
@@ -831,18 +831,18 @@ fn bar_size(
         // Inner view is smaller, bar always touches the top or bottom
         if scroll_offset < 0 {
             // Bottom
-            (leading_padding + available_space.saturating_sub(bar_length)) as i32
+            (leading_padding + available_space.saturating_sub(bar_length)) as i16
         } else {
             // Top
-            leading_padding as i32
+            leading_padding as i16
         }
     } else {
         // Actual scrollable content - position based on scroll progress
-        let max_travel = available_space.saturating_sub(bar_length) as i32;
-        let permitted_offset = (inner_view_length - scroll_view_length) as i32;
+        let max_travel = available_space.saturating_sub(bar_length) as i16;
+        let permitted_offset = (inner_view_length - scroll_view_length) as i16;
 
         let scroll_progress = (-scroll_offset).max(0).min(permitted_offset);
-        leading_padding as i32 + (scroll_progress * max_travel) / permitted_offset
+        leading_padding as i16 + (scroll_progress * max_travel) / permitted_offset
     };
 
     (bar_position, bar_length)

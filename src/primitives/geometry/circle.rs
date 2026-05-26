@@ -10,12 +10,12 @@ use crate::primitives::{
 pub struct Circle {
     /// Top left corner of the bounding box
     pub origin: Point,
-    pub diameter: u32,
+    pub diameter: u16,
 }
 
 impl Circle {
     #[must_use]
-    pub const fn new(origin: Point, diameter: u32) -> Self {
+    pub const fn new(origin: Point, diameter: u16) -> Self {
         Self { origin, diameter }
     }
 
@@ -49,7 +49,7 @@ impl Shape for Circle {
 
         let mut elements = [PathEl::ClosePath; 66];
 
-        let first_point = Point::new((center_x + radius) as i32, center_y as i32);
+        let first_point = Point::new((center_x + radius) as i16, center_y as i16);
         elements[0] = PathEl::MoveTo(first_point);
 
         // FIXME: This is lazy, need to implement actual circle
@@ -58,7 +58,7 @@ impl Shape for Circle {
             let angle = (i as f32 * 2.0 * core::f32::consts::PI) / 64.0;
             let x = center_x + radius * angle.cos();
             let y = center_y + radius * angle.sin();
-            elements[i] = PathEl::LineTo(Point::new(x as i32, y as i32));
+            elements[i] = PathEl::LineTo(Point::new(x as i16, y as i16));
         });
 
         // Close the path (already initialized with ClosePath)
@@ -94,7 +94,7 @@ impl CoordinateSpaceTransform for Circle {
 #[cfg(feature = "embedded-graphics")]
 impl From<Circle> for embedded_graphics::primitives::Circle {
     fn from(value: Circle) -> Self {
-        Self::new(value.origin.into(), value.diameter)
+        Self::new(value.origin.into(), value.diameter as u32)
     }
 }
 

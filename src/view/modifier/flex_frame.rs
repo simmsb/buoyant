@@ -9,11 +9,11 @@ use crate::{
 #[derive(Debug, Clone)]
 pub struct FlexFrame<T> {
     child: T,
-    min_width: Option<u32>,
-    ideal_width: Option<u32>,
+    min_width: Option<u16>,
+    ideal_width: Option<u16>,
     max_width: Option<Dimension>,
-    min_height: Option<u32>,
-    ideal_height: Option<u32>,
+    min_height: Option<u16>,
+    ideal_height: Option<u16>,
     max_height: Option<Dimension>,
     horizontal_alignment: HorizontalAlignment,
     vertical_alignment: VerticalAlignment,
@@ -38,7 +38,7 @@ impl<T: ViewMarker> FlexFrame<T> {
     ///
     /// The child view may still resolve to a smaller width if it is smaller than
     /// the minimum width.
-    pub const fn with_min_width(mut self, min_width: u32) -> Self {
+    pub const fn with_min_width(mut self, min_width: u16) -> Self {
         self.min_width = Some(min_width);
         self
     }
@@ -46,7 +46,7 @@ impl<T: ViewMarker> FlexFrame<T> {
     /// The width to propose to the child view when a parent view requests a compact width.
     ///
     /// This is especially useful for views like shapes which have no inherent size.
-    pub const fn with_ideal_width(mut self, ideal_width: u32) -> Self {
+    pub const fn with_ideal_width(mut self, ideal_width: u16) -> Self {
         self.ideal_width = Some(ideal_width);
         self
     }
@@ -77,7 +77,7 @@ impl<T: ViewMarker> FlexFrame<T> {
     ///
     /// The child view may still resolve to a smaller height if it is smaller than
     /// the minimum height.
-    pub const fn with_min_height(mut self, min_height: u32) -> Self {
+    pub const fn with_min_height(mut self, min_height: u16) -> Self {
         self.min_height = Some(min_height);
         self
     }
@@ -85,7 +85,7 @@ impl<T: ViewMarker> FlexFrame<T> {
     /// The height to propose to the child view when a parent view requests a compact height.
     ///
     /// This is especially useful for views like shapes which have no inherent size.
-    pub const fn with_ideal_height(mut self, ideal_height: u32) -> Self {
+    pub const fn with_ideal_height(mut self, ideal_height: u16) -> Self {
         self.ideal_height = Some(ideal_height);
         self
     }
@@ -113,14 +113,14 @@ impl<T: ViewMarker> FlexFrame<T> {
     }
 
     /// Sets the ideal size of the frame.
-    pub const fn with_ideal_size(mut self, ideal_width: u32, ideal_height: u32) -> Self {
+    pub const fn with_ideal_size(mut self, ideal_width: u16, ideal_height: u16) -> Self {
         self.ideal_width = Some(ideal_width);
         self.ideal_height = Some(ideal_height);
         self
     }
 
     /// Sets the minimum size of the frame.
-    pub const fn with_min_size(mut self, min_width: u32, min_height: u32) -> Self {
+    pub const fn with_min_size(mut self, min_width: u16, min_height: u16) -> Self {
         self.min_width = Some(min_width);
         self.min_height = Some(min_height);
         self

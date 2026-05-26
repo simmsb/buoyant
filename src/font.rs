@@ -54,7 +54,7 @@ pub trait FontMetrics {
 
     /// The horizontal advance produced by a character
     #[must_use]
-    fn advance(&self, character: char) -> u32;
+    fn advance(&self, character: char) -> u16;
 }
 
 impl<T: FontMetrics> FontMetrics for &T {
@@ -66,7 +66,7 @@ impl<T: FontMetrics> FontMetrics for &T {
         (*self).vertical_metrics()
     }
 
-    fn advance(&self, character: char) -> u32 {
+    fn advance(&self, character: char) -> u16 {
         (*self).advance(character)
     }
 }
@@ -74,24 +74,24 @@ impl<T: FontMetrics> FontMetrics for &T {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct VMetrics {
     /// The distance from the baseline to the top of the tallest character
-    pub ascent: i32,
+    pub ascent: i16,
     /// The distance from the baseline to the bottom of the lowest character, typically negative
-    pub descent: i32,
+    pub descent: i16,
     /// The spacing between lines, i.e. the space between the bottom of one line's descent to the
     /// top of the next line's ascent
-    pub line_spacing: i32,
+    pub line_spacing: i16,
 }
 
 impl VMetrics {
     /// The distance between baselines
     #[must_use]
-    pub fn line_height(&self) -> u32 {
-        (self.ascent - self.descent + self.line_spacing).max(0) as u32
+    pub fn line_height(&self) -> u16 {
+        (self.ascent - self.descent + self.line_spacing).max(0) as u16
     }
 }
 
 /// A Font attribute allowing customization of size.
 pub trait CustomSize {
     #[must_use]
-    fn with_size(self, size: u32) -> Self;
+    fn with_size(self, size: u16) -> Self;
 }

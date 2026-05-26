@@ -25,7 +25,7 @@ impl Rectangle {
     }
 
     #[must_use]
-    pub const fn from_bounds(min_x: i32, min_y: i32, max_x: i32, max_y: i32) -> Self {
+    pub const fn from_bounds(min_x: i16, min_y: i16, max_x: i16, max_y: i16) -> Self {
         Self::new(
             Point::new(
                 if min_x < max_x { min_x } else { max_x },
@@ -36,16 +36,16 @@ impl Rectangle {
     }
 
     #[must_use] 
-    pub const fn area(&self) -> u32 {
+    pub const fn area(&self) -> u16 {
         self.size.area()
     }
 
     #[must_use]
     pub const fn intersects(&self, other: &Self) -> bool {
-        let self_right = self.origin.x + self.size.width as i32;
-        let self_bottom = self.origin.y + self.size.height as i32;
-        let other_right = other.origin.x + other.size.width as i32;
-        let other_bottom = other.origin.y + other.size.height as i32;
+        let self_right = self.origin.x + self.size.width as i16;
+        let self_bottom = self.origin.y + self.size.height as i16;
+        let other_right = other.origin.x + other.size.width as i16;
+        let other_bottom = other.origin.y + other.size.height as i16;
 
         !(self.origin.x >= other_right
             || self_right <= other.origin.x
@@ -57,8 +57,8 @@ impl Rectangle {
     pub const fn contains(&self, point: &Point) -> bool {
         self.origin.x <= point.x
             && self.origin.y <= point.y
-            && point.x < (self.origin.x + self.size.width as i32)
-            && point.y < (self.origin.y + self.size.height as i32)
+            && point.x < (self.origin.x + self.size.width as i16)
+            && point.y < (self.origin.y + self.size.height as i16)
     }
 
     #[must_use]
@@ -75,10 +75,10 @@ impl Rectangle {
     #[allow(dead_code, reason = "unused with some feature combinations")]
     #[must_use]
     pub(crate) fn intersection_with(&self, other: &Self) -> Intersection {
-        let self_right = self.origin.x + self.size.width as i32;
-        let self_bottom = self.origin.y + self.size.height as i32;
-        let other_right = other.origin.x + other.size.width as i32;
-        let other_bottom = other.origin.y + other.size.height as i32;
+        let self_right = self.origin.x + self.size.width as i16;
+        let self_bottom = self.origin.y + self.size.height as i16;
+        let other_right = other.origin.x + other.size.width as i16;
+        let other_bottom = other.origin.y + other.size.height as i16;
 
         // Check if other is completely contained within self
         let contained = self.origin.x <= other.origin.x
@@ -108,13 +108,13 @@ impl Rectangle {
         let x1 = self.origin.x.max(other.origin.x);
         let y1 = self.origin.y.max(other.origin.y);
         let x2 =
-            (self.origin.x + self.size.width as i32).min(other.origin.x + other.size.width as i32);
-        let y2 = (self.origin.y + self.size.height as i32)
-            .min(other.origin.y + other.size.height as i32);
+            (self.origin.x + self.size.width as i16).min(other.origin.x + other.size.width as i16);
+        let y2 = (self.origin.y + self.size.height as i16)
+            .min(other.origin.y + other.size.height as i16);
 
         Some(Self {
             origin: Point::new(x1, y1),
-            size: Size::new((x2 - x1) as u32, (y2 - y1) as u32),
+            size: Size::new((x2 - x1) as u16, (y2 - y1) as u16),
         })
     }
 
@@ -123,24 +123,24 @@ impl Rectangle {
         let x1 = self.origin.x.min(other.origin.x);
         let y1 = self.origin.y.min(other.origin.y);
         let x2 =
-            (self.origin.x + self.size.width as i32).max(other.origin.x + other.size.width as i32);
-        let y2 = (self.origin.y + self.size.height as i32)
-            .max(other.origin.y + other.size.height as i32);
+            (self.origin.x + self.size.width as i16).max(other.origin.x + other.size.width as i16);
+        let y2 = (self.origin.y + self.size.height as i16)
+            .max(other.origin.y + other.size.height as i16);
 
         Self {
             origin: Point::new(x1, y1),
-            size: Size::new((x2 - x1) as u32, (y2 - y1) as u32),
+            size: Size::new((x2 - x1) as u16, (y2 - y1) as u16),
         }
     }
 
     #[must_use]
-    pub const fn x_end(&self) -> i32 {
-        self.origin.x + self.size.width as i32
+    pub const fn x_end(&self) -> i16 {
+        self.origin.x + self.size.width as i16
     }
 
     #[must_use]
-    pub const fn y_end(&self) -> i32 {
-        self.origin.y + self.size.height as i32
+    pub const fn y_end(&self) -> i16 {
+        self.origin.y + self.size.height as i16
     }
 
     /// Returns a new rectangle offset by the given point
@@ -226,12 +226,12 @@ impl Shape for Rectangle {
 
     fn path_elements(&self, _tolerance: u16) -> Self::PathElementsIter<'_> {
         let top_left = self.origin;
-        let top_right = Point::new(self.origin.x + self.size.width as i32, self.origin.y);
+        let top_right = Point::new(self.origin.x + self.size.width as i16, self.origin.y);
         let bottom_right = Point::new(
-            self.origin.x + self.size.width as i32,
-            self.origin.y + self.size.height as i32,
+            self.origin.x + self.size.width as i16,
+            self.origin.y + self.size.height as i16,
         );
-        let bottom_left = Point::new(self.origin.x, self.origin.y + self.size.height as i32);
+        let bottom_left = Point::new(self.origin.x, self.origin.y + self.size.height as i16);
 
         let elements = [
             PathEl::MoveTo(top_left),

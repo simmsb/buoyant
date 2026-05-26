@@ -46,7 +46,7 @@ impl FontMetrics for CharacterBufferFontMetrics {
         }
     }
 
-    fn advance(&self, _: char) -> u32 {
+    fn advance(&self, _: char) -> u16 {
         1
     }
 }

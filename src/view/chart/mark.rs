@@ -3,16 +3,16 @@ use crate::primitives::Plottable;
 /// A data point that can be plotted on a chart.
 pub trait ChartMark {
     /// The x coordinate in data space.
-    fn x(&self) -> i32;
+    fn x(&self) -> i16;
     /// The y coordinate in data space.
-    fn y(&self) -> i32;
+    fn y(&self) -> i16;
 }
 
 /// A mark that connects data points with lines.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct LineMark {
-    x: i32,
-    y: i32,
+    x: i16,
+    y: i16,
 }
 
 impl LineMark {
@@ -20,17 +20,17 @@ impl LineMark {
     #[must_use]
     pub fn new(x: impl Plottable, y: impl Plottable) -> Self {
         Self {
-            x: x.as_i32(),
-            y: y.as_i32(),
+            x: x.as_i16(),
+            y: y.as_i16(),
         }
     }
 }
 
 impl ChartMark for LineMark {
-    fn x(&self) -> i32 {
+    fn x(&self) -> i16 {
         self.x
     }
-    fn y(&self) -> i32 {
+    fn y(&self) -> i16 {
         self.y
     }
 }
@@ -38,8 +38,8 @@ impl ChartMark for LineMark {
 /// A mark that renders data points as vertical bars.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct BarMark {
-    x: i32,
-    y: i32,
+    x: i16,
+    y: i16,
 }
 
 impl BarMark {
@@ -47,17 +47,17 @@ impl BarMark {
     #[must_use]
     pub fn new(x: impl Plottable, y: impl Plottable) -> Self {
         Self {
-            x: x.as_i32(),
-            y: y.as_i32(),
+            x: x.as_i16(),
+            y: y.as_i16(),
         }
     }
 }
 
 impl ChartMark for BarMark {
-    fn x(&self) -> i32 {
+    fn x(&self) -> i16 {
         self.x
     }
-    fn y(&self) -> i32 {
+    fn y(&self) -> i16 {
         self.y
     }
 }
@@ -65,8 +65,8 @@ impl ChartMark for BarMark {
 /// A mark that renders data points as individual points (scatter).
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PointMark {
-    x: i32,
-    y: i32,
+    x: i16,
+    y: i16,
 }
 
 impl PointMark {
@@ -74,17 +74,17 @@ impl PointMark {
     #[must_use]
     pub fn new(x: impl Plottable, y: impl Plottable) -> Self {
         Self {
-            x: x.as_i32(),
-            y: y.as_i32(),
+            x: x.as_i16(),
+            y: y.as_i16(),
         }
     }
 }
 
 impl ChartMark for PointMark {
-    fn x(&self) -> i32 {
+    fn x(&self) -> i16 {
         self.x
     }
-    fn y(&self) -> i32 {
+    fn y(&self) -> i16 {
         self.y
     }
 }

@@ -3,7 +3,7 @@ use fixed_macro::fixed;
 
 use crate::primitives::{Interpolate, Point};
 
-pub type ScaleFactor = fixed::types::U18F14;
+pub type ScaleFactor = fixed::types::U9F7;
 
 /// A type which can be transformed from one coordinate space to another.
 pub trait CoordinateSpaceTransform {
@@ -38,7 +38,7 @@ impl LinearTransform {
     pub const fn new_offset(offset: Point) -> Self {
         Self {
             offset,
-            scale: fixed!(1: U18F14),
+            scale: fixed!(1: U9F7),
         }
     }
 
@@ -46,7 +46,7 @@ impl LinearTransform {
     pub const fn identity() -> Self {
         Self {
             offset: Point::new(0, 0),
-            scale: fixed!(1: U18F14),
+            scale: fixed!(1: U9F7),
         }
     }
 
@@ -54,8 +54,8 @@ impl LinearTransform {
     #[must_use]
     pub fn applying(&self, other: &Self) -> Self {
         let offset = Point {
-            x: (other.offset.x * self.scale.cast_signed()).to_num::<i32>() + self.offset.x,
-            y: (other.offset.y * self.scale.cast_signed()).to_num::<i32>() + self.offset.y,
+            x: (other.offset.x * self.scale.cast_signed()).to_num::<i16>() + self.offset.x,
+            y: (other.offset.y * self.scale.cast_signed()).to_num::<i16>() + self.offset.y,
         };
         Self {
             offset,
@@ -67,8 +67,8 @@ impl LinearTransform {
     pub fn inverse(&self) -> Self {
         let inv_scale = self.scale.recip().cast_signed();
         let offset = Point {
-            x: (self.offset.x * inv_scale).to_num::<i32>(),
-            y: (self.offset.y * inv_scale).to_num::<i32>(),
+            x: (self.offset.x * inv_scale).to_num::<i16>(),
+            y: (self.offset.y * inv_scale).to_num::<i16>(),
         };
         Self {
             offset: -offset,
@@ -82,7 +82,7 @@ impl Default for LinearTransform {
     fn default() -> Self {
         Self {
             offset: Point::new(0, 0),
-            scale: fixed!(1: U18F14),
+            scale: fixed!(1: U9F7),
         }
     }
 }

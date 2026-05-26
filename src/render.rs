@@ -69,8 +69,8 @@ pub struct Differ<'a> {
     granular: bool,
     idx: usize,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
-    pub(crate) dirty_aabb: &'a mut StaticAABBTree<60>,
-    pub(crate) drawn_aabb: &'a mut StaticAABBTree<60>,
+    pub(crate) dirty_aabb: &'a mut StaticAABBTree<30>,
+    pub(crate) drawn_aabb: &'a mut StaticAABBTree<30>,
     transform: LinearTransform,
 }
 
@@ -86,8 +86,8 @@ pub struct DifferNote(usize);
 impl<'a> Differ<'a> {
     pub fn new(
         array: &'a mut bitvec::slice::BitSlice<u8>,
-        dirty_aabb: &'a mut StaticAABBTree<60>,
-        drawn_aabb: &'a mut StaticAABBTree<60>,
+        dirty_aabb: &'a mut StaticAABBTree<30>,
+        drawn_aabb: &'a mut StaticAABBTree<30>,
     ) -> Self {
         Self {
             granular: true,
@@ -120,8 +120,8 @@ impl<'a> Differ<'a> {
 
     pub fn offset(&mut self, offset: Point) -> LinearTransform {
         let transform = self.transform.clone();
-        self.transform.offset.x += (offset.x * self.transform.scale.cast_signed()).to_num::<i32>();
-        self.transform.offset.y += (offset.y * self.transform.scale.cast_signed()).to_num::<i32>();
+        self.transform.offset.x += (offset.x * self.transform.scale.cast_signed()).to_num::<i16>();
+        self.transform.offset.y += (offset.y * self.transform.scale.cast_signed()).to_num::<i16>();
         transform
     }
 

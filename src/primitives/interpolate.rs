@@ -59,14 +59,14 @@ impl Interpolate for char {
     }
 }
 
-impl Interpolate for fixed::types::U18F14 {
+impl Interpolate for fixed::types::U9F7 {
     fn interpolate(from: Self, to: Self, amount: u8) -> Self {
         let factor = Self::from(amount) / 255;
-        to * factor + from * (fixed!(1:U18F14) - factor)
+        to * factor + from * (fixed!(1:U9F7) - factor)
     }
 }
 
-impl Interpolate for fixed::types::I18F14 {
+impl Interpolate for fixed::types::I9F7 {
     fn interpolate(from: Self, to: Self, amount: u8) -> Self {
         from + (to - from) * (Self::from(amount) / 255)
     }
@@ -75,7 +75,7 @@ impl Interpolate for fixed::types::I18F14 {
 #[cfg(test)]
 mod tests {
     use super::Interpolate;
-    use fixed::types::{I18F14, U18F14};
+    use fixed::types::{I9F7, U9F7};
     use paste::paste;
 
     fn fp_interpolate<T: fixed::traits::Fixed>(start: T, end: T, amount: f32) -> T {
@@ -140,8 +140,8 @@ mod tests {
         };
     }
 
-    test_fixed_u_interpolate_approx_fp!(U18F14);
-    test_fixed_i_interpolate_approx_fp!(I18F14);
+    test_fixed_u_interpolate_approx_fp!(U9F7);
+    test_fixed_i_interpolate_approx_fp!(I9F7);
 
     macro_rules! test_fp_ends {
         ($type:ty) => {

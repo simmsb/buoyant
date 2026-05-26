@@ -25,7 +25,7 @@ impl RoundedRect {
 }
 
 impl Inset for RoundedRect {
-    fn inset(mut self, amount: i32) -> Self {
+    fn inset(mut self, amount: i16) -> Self {
         self.size.width = self.size.width.saturating_add_signed(-2 * amount);
         self.size.height = self.size.height.saturating_add_signed(-2 * amount);
         self.corner_radius = self.corner_radius.saturating_add_signed(-amount as i16);

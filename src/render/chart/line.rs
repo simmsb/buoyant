@@ -11,7 +11,7 @@ pub struct LineRenderable<const N: usize> {
     /// The computed pixel coordinates of each data point.
     pub points: heapless::Vec<(i16, i16), N>,
     /// The line width in pixels.
-    pub line_width: u32,
+    pub line_width: u16,
     /// The bounding frame of the chart area.
     pub frame: Rectangle,
 }
@@ -41,7 +41,7 @@ impl<const N: usize> AnimatedJoin for LineRenderable<N> {
             self.points[i].1 =
                 i16::interpolate(source.points[i].1, self.points[i].1, domain.factor);
         }
-        self.line_width = u32::interpolate(source.line_width, self.line_width, domain.factor);
+        self.line_width = u16::interpolate(source.line_width, self.line_width, domain.factor);
         self.frame = Rectangle::interpolate(source.frame.clone(), self.frame.clone(), domain.factor);
     }
 }
@@ -52,8 +52,8 @@ impl<const N: usize, C: Copy> Render<C> for LineRenderable<N> {
         let stroke = Stroke::new(self.line_width);
 
         for pair in self.points.windows(2) {
-            let start = Point::new(i32::from(pair[0].0), i32::from(pair[0].1));
-            let end = Point::new(i32::from(pair[1].0), i32::from(pair[1].1));
+            let start = Point::new(i16::from(pair[0].0), i16::from(pair[0].1));
+            let end = Point::new(i16::from(pair[1].0), i16::from(pair[1].1));
             render_target.stroke(
                 &stroke,
                 LinearTransform::default(),

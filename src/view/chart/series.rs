@@ -52,7 +52,7 @@ where
 {
     data: &'a [I],
     map_fn: F,
-    line_width: u32,
+    line_width: u16,
 }
 
 impl<const N: usize, I, F> core::fmt::Debug for LineSeries<'_, N, I, F>
@@ -83,7 +83,7 @@ where
 
     /// Sets the line width in pixels.
     #[must_use]
-    pub fn with_line_width(mut self, width: u32) -> Self {
+    pub fn with_line_width(mut self, width: u16) -> Self {
         self.line_width = width;
         self
     }
@@ -128,7 +128,7 @@ where
 {
     data: &'a [I],
     map_fn: F,
-    spacing: u32,
+    spacing: u16,
 }
 
 impl<const N: usize, I, F> core::fmt::Debug for BarSeries<'_, N, I, F>
@@ -159,7 +159,7 @@ where
 
     /// Sets the spacing between bars in pixels.
     #[must_use]
-    pub fn with_spacing(mut self, spacing: u32) -> Self {
+    pub fn with_spacing(mut self, spacing: u16) -> Self {
         self.spacing = spacing;
         self
     }
@@ -194,10 +194,10 @@ where
             let mapped_y = scale.map_y(mark.y());
 
             let total_bar_area =
-                bar_w * count as u32 + self.spacing * count.saturating_sub(1) as u32;
+                bar_w * count as u16 + self.spacing * count.saturating_sub(1) as u16;
             let x_start =
-                scale.origin.x + (scale.size.width.saturating_sub(total_bar_area)) as i32 / 2;
-            let bar_x = x_start + (bar_w + self.spacing) as i32 * i as i32;
+                scale.origin.x + (scale.size.width.saturating_sub(total_bar_area)) as i16 / 2;
+            let bar_x = x_start + (bar_w + self.spacing) as i16 * i as i16;
 
             let (top, height) = if mapped_y < baseline_y {
                 (mapped_y, baseline_y - mapped_y)
@@ -229,7 +229,7 @@ where
 {
     data: &'a [I],
     map_fn: F,
-    point_size: u32,
+    point_size: u16,
 }
 
 impl<const N: usize, I, F> core::fmt::Debug for PointSeries<'_, N, I, F>
@@ -260,7 +260,7 @@ where
 
     /// Sets the diameter of each point in pixels.
     #[must_use]
-    pub fn with_point_size(mut self, size: u32) -> Self {
+    pub fn with_point_size(mut self, size: u16) -> Self {
         self.point_size = size;
         self
     }

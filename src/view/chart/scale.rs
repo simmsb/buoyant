@@ -6,19 +6,19 @@ use super::mark::ChartMark;
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DataBounds {
     /// Minimum x-coordinate in data space.
-    pub x_min: i32,
+    pub x_min: i16,
     /// Maximum x-coordinate in data space.
-    pub x_max: i32,
+    pub x_max: i16,
     /// Minimum y-coordinate in data space.
-    pub y_min: i32,
+    pub y_min: i16,
     /// Maximum y-coordinate in data space.
-    pub y_max: i32,
+    pub y_max: i16,
 }
 
 impl DataBounds {
     /// Creates new data bounds.
     #[must_use]
-    pub const fn new(x_min: i32, x_max: i32, y_min: i32, y_max: i32) -> Self {
+    pub const fn new(x_min: i16, x_max: i16, y_min: i16, y_max: i16) -> Self {
         Self {
             x_min,
             x_max,
@@ -84,10 +84,10 @@ impl ChartScale {
 
     /// Maps a data x-coordinate to a pixel x-coordinate (i16).
     #[must_use]
-    pub fn map_x(&self, x: i32) -> i16 {
+    pub fn map_x(&self, x: i16) -> i16 {
         let range = self.bounds.x_max - self.bounds.x_min;
         if range == 0 {
-            return (self.origin.x + self.size.width as i32 / 2) as i16;
+            return (self.origin.x + self.size.width as i16 / 2) as i16;
         }
         let pixel = self.origin.x as i64
             + (x as i64 - self.bounds.x_min as i64) * self.size.width as i64 / range as i64;
@@ -98,10 +98,10 @@ impl ChartScale {
     ///
     /// Y-axis is inverted: data increases upward, pixels increase downward.
     #[must_use]
-    pub fn map_y(&self, y: i32) -> i16 {
+    pub fn map_y(&self, y: i16) -> i16 {
         let range = self.bounds.y_max - self.bounds.y_min;
         if range == 0 {
-            return (self.origin.y + self.size.height as i32 / 2) as i16;
+            return (self.origin.y + self.size.height as i16 / 2) as i16;
         }
         // Invert: higher data values → lower pixel y
         let pixel = self.origin.y as i64 + self.size.height as i64
@@ -117,12 +117,12 @@ impl ChartScale {
 
     /// Returns the pixel width available for each bar in a bar chart.
     #[must_use]
-    pub fn bar_width(&self, count: usize, spacing: u32) -> u32 {
+    pub fn bar_width(&self, count: usize, spacing: u16) -> u16 {
         if count == 0 {
             return 0;
         }
-        let total_spacing = spacing * count.saturating_sub(1) as u32;
-        self.size.width.saturating_sub(total_spacing) / count as u32
+        let total_spacing = spacing * count.saturating_sub(1) as u16;
+        self.size.width.saturating_sub(total_spacing) / count as u16
     }
 }
 

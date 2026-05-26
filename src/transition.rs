@@ -94,10 +94,10 @@ impl Move {
 impl Transition for Move {
     fn transform(&self, direction: Direction, factor: u8, bounds: Size) -> Point {
         let transform = match self.edge {
-            Edge::Top => Point::new(0, -(bounds.height as i32)),
-            Edge::Bottom => Point::new(0, bounds.height as i32),
-            Edge::Leading => Point::new(-(bounds.width as i32), 0),
-            Edge::Trailing => Point::new(bounds.width as i32, 0),
+            Edge::Top => Point::new(0, -(bounds.height as i16)),
+            Edge::Bottom => Point::new(0, bounds.height as i16),
+            Edge::Leading => Point::new(-(bounds.width as i16), 0),
+            Edge::Trailing => Point::new(bounds.width as i16, 0),
         };
 
         if direction == Direction::In {
@@ -157,10 +157,10 @@ impl Slide {
 impl Transition for Slide {
     fn transform(&self, direction: Direction, factor: u8, bounds: Size) -> Point {
         let transform = match self.edge {
-            Edge::Top => Point::new(0, -(bounds.height as i32)),
-            Edge::Bottom => Point::new(0, bounds.height as i32),
-            Edge::Leading => Point::new(-(bounds.width as i32), 0),
-            Edge::Trailing => Point::new(bounds.width as i32, 0),
+            Edge::Top => Point::new(0, -(bounds.height as i16)),
+            Edge::Bottom => Point::new(0, bounds.height as i16),
+            Edge::Leading => Point::new(-(bounds.width as i16), 0),
+            Edge::Trailing => Point::new(bounds.width as i16, 0),
         };
 
         if direction == Direction::In {
@@ -239,7 +239,7 @@ mod tests {
     #[test]
     fn test_move_transition_top_edge() {
         let transition = Move::new(Edge::Top);
-        let expected_offset = Point::new(0, -(TEST_SIZE.height as i32));
+        let expected_offset = Point::new(0, -(TEST_SIZE.height as i16));
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), expected_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -253,7 +253,7 @@ mod tests {
     #[test]
     fn test_move_transition_bottom_edge() {
         let transition = Move::new(Edge::Bottom);
-        let expected_offset = Point::new(0, TEST_SIZE.height as i32);
+        let expected_offset = Point::new(0, TEST_SIZE.height as i16);
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), expected_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -267,7 +267,7 @@ mod tests {
     #[test]
     fn test_move_transition_leading_edge() {
         let transition = Move::new(Edge::Leading);
-        let expected_offset = Point::new(-(TEST_SIZE.width as i32), 0);
+        let expected_offset = Point::new(-(TEST_SIZE.width as i16), 0);
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), expected_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -281,7 +281,7 @@ mod tests {
     #[test]
     fn test_move_transition_trailing_edge() {
         let transition = Move::new(Edge::Trailing);
-        let expected_offset = Point::new(TEST_SIZE.width as i32, 0);
+        let expected_offset = Point::new(TEST_SIZE.width as i16, 0);
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), expected_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -295,7 +295,7 @@ mod tests {
     #[test]
     fn test_move_transition_intermediate_values() {
         let transition = Move::new(Edge::Top);
-        let start_offset = Point::new(0, -(TEST_SIZE.height as i32));
+        let start_offset = Point::new(0, -(TEST_SIZE.height as i16));
 
         let in_halfway = transition.transform(In, 127, TEST_SIZE);
         let out_halfway = transition.transform(Out, 127, TEST_SIZE);
@@ -309,8 +309,8 @@ mod tests {
     #[test]
     fn test_slide_transition_top_edge() {
         let transition = Slide::new(Edge::Top);
-        let start_offset = Point::new(0, -(TEST_SIZE.height as i32));
-        let opposite_offset = Point::new(0, TEST_SIZE.height as i32); // Bottom edge
+        let start_offset = Point::new(0, -(TEST_SIZE.height as i16));
+        let opposite_offset = Point::new(0, TEST_SIZE.height as i16); // Bottom edge
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), start_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -324,8 +324,8 @@ mod tests {
     #[test]
     fn test_slide_transition_bottom_edge() {
         let transition = Slide::new(Edge::Bottom);
-        let start_offset = Point::new(0, TEST_SIZE.height as i32);
-        let opposite_offset = Point::new(0, -(TEST_SIZE.height as i32)); // Top edge
+        let start_offset = Point::new(0, TEST_SIZE.height as i16);
+        let opposite_offset = Point::new(0, -(TEST_SIZE.height as i16)); // Top edge
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), start_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -339,8 +339,8 @@ mod tests {
     #[test]
     fn test_slide_transition_leading_edge() {
         let transition = Slide::new(Edge::Leading);
-        let start_offset = Point::new(-(TEST_SIZE.width as i32), 0);
-        let opposite_offset = Point::new(TEST_SIZE.width as i32, 0); // Trailing edge
+        let start_offset = Point::new(-(TEST_SIZE.width as i16), 0);
+        let opposite_offset = Point::new(TEST_SIZE.width as i16, 0); // Trailing edge
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), start_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -354,8 +354,8 @@ mod tests {
     #[test]
     fn test_slide_transition_trailing_edge() {
         let transition = Slide::new(Edge::Trailing);
-        let start_offset = Point::new(TEST_SIZE.width as i32, 0);
-        let opposite_offset = Point::new(-(TEST_SIZE.width as i32), 0); // Leading edge
+        let start_offset = Point::new(TEST_SIZE.width as i16, 0);
+        let opposite_offset = Point::new(-(TEST_SIZE.width as i16), 0); // Leading edge
 
         assert_eq!(transition.transform(In, 0, TEST_SIZE), start_offset);
         assert_eq!(transition.transform(In, 255, TEST_SIZE), Point::zero());
@@ -373,9 +373,9 @@ mod tests {
         let in_halfway = transition.transform(In, 127, TEST_SIZE);
         let out_halfway = transition.transform(Out, 127, TEST_SIZE);
 
-        assert_ne!(in_halfway, Point::new(-(TEST_SIZE.width as i32), 0));
+        assert_ne!(in_halfway, Point::new(-(TEST_SIZE.width as i16), 0));
         assert_ne!(in_halfway, Point::zero());
-        assert_ne!(out_halfway, Point::new(TEST_SIZE.width as i32, 0));
+        assert_ne!(out_halfway, Point::new(TEST_SIZE.width as i16, 0));
         assert_ne!(out_halfway, Point::zero());
     }
 

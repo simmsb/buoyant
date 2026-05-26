@@ -25,13 +25,13 @@ pub enum Edges {
 pub struct Padding<T> {
     edges: Edges,
     #[allow(clippy::struct_field_names)]
-    padding: u32,
+    padding: u16,
     inner: T,
 }
 
 impl<T: ViewMarker> Padding<T> {
     #[allow(missing_docs)]
-    pub const fn new(edges: Edges, padding: u32, inner: T) -> Self {
+    pub const fn new(edges: Edges, padding: u16, inner: T) -> Self {
         Self {
             edges,
             padding,
@@ -119,7 +119,7 @@ where
         };
         self.inner.render_tree(
             layout,
-            origin + Point::new(leading as i32, top as i32),
+            origin + Point::new(leading as i16, top as i16),
             env,
             captures,
             state,

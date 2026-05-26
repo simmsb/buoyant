@@ -20,7 +20,7 @@ use core::cell::RefCell;
 pub struct HStack<T> {
     items: T,
     alignment: VerticalAlignment,
-    spacing: u32,
+    spacing: u16,
 }
 
 struct HorizontalEnvironment<'a, T> {
@@ -56,7 +56,7 @@ impl<T: ViewMarker> HStack<T> {
     }
     /// Sets the spacing between items in the stack.
     #[must_use]
-    pub fn with_spacing(self, spacing: u32) -> Self {
+    pub fn with_spacing(self, spacing: u16) -> Self {
         Self { spacing, ..self }
     }
 
@@ -92,7 +92,7 @@ type LayoutFn<'a> = &'a mut dyn FnMut(ProposedDimensions) -> Dimensions;
 fn layout_n(
     subviews: &mut [(LayoutFn, i8, bool)],
     offer: ProposedDimensions,
-    spacing: u32,
+    spacing: u16,
     flexibilities: &mut [Dimension],
     subviews_indices: &mut [usize],
 ) -> Dimensions {
@@ -106,9 +106,9 @@ fn layout_n(
     debug_assert!(!subviews_indices.iter().any(|e| *e != 0));
 
     let ProposedDimension::Exact(width) = offer.width else {
-        let mut total_width: Dimension = 0u32.into();
-        let mut max_height: Dimension = 0u32.into();
-        let mut non_empty_views: u32 = 0;
+        let mut total_width: Dimension = 0u16.into();
+        let mut max_height: Dimension = 0u16.into();
+        let mut non_empty_views: u16 = 0;
         for (layout_fn, _, is_empty) in subviews {
             // layout must be called at least once on every view to avoid panic unwrapping the
             // resolved layout.
@@ -157,9 +157,9 @@ fn layout_n(
     }
 
     let mut remaining_width =
-        width.saturating_sub(spacing * (subview_count.saturating_sub(num_empty_views + 1)) as u32);
+        width.saturating_sub(spacing * (subview_count.saturating_sub(num_empty_views + 1)) as u16);
     let mut last_priority_group: Option<i8> = None;
-    let mut max_height: Dimension = 0u32.into();
+    let mut max_height: Dimension = 0u16.into();
 
     loop {
         // collect the unsized subviews with the max layout priority into a group
@@ -199,7 +199,7 @@ fn layout_n(
         // frame animation...
         group_indices.sort_unstable_by_key(|&i| flexibilities[i]);
 
-        let mut remaining_group_size = group_indices.len() as u32;
+        let mut remaining_group_size = group_indices.len() as u16;
 
         for index in group_indices {
             let width_fraction =
@@ -332,8 +332,8 @@ macro_rules! impl_view_for_hstack {
                     );
 
                     if !self.items.$n.is_empty() {
-                        let child_width: u32 = layout.sublayouts.$n.resolved_size.width.into();
-                        width_offset += (child_width + self.spacing) as i32;
+                        let child_width: u16 = layout.sublayouts.$n.resolved_size.width.into();
+                        width_offset += (child_width + self.spacing) as i16;
                     }
                 )+
 

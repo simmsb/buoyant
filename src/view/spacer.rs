@@ -14,7 +14,7 @@ use crate::{
 /// all other siblings have been laid out.
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Spacer {
-    min_length: u32,
+    min_length: u16,
 }
 
 impl ViewMarker for Spacer {
@@ -48,10 +48,10 @@ impl<Captures: ?Sized> ViewLayout<Captures> for Spacer {
         let size = match env.layout_direction() {
             LayoutDirection::Horizontal => Dimensions {
                 width: offer.width.resolve_most_flexible(0, self.min_length),
-                height: 0u32.into(),
+                height: 0u16.into(),
             },
             LayoutDirection::Vertical => Dimensions {
-                width: 0u32.into(),
+                width: 0u16.into(),
                 height: offer.height.resolve_most_flexible(0, self.min_length),
             },
         };

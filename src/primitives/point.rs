@@ -8,8 +8,8 @@ use crate::primitives::{
 #[derive(defmt::Format)]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub struct Point {
-    pub x: i32,
-    pub y: i32,
+    pub x: i16,
+    pub y: i16,
 }
 
 impl core::fmt::Display for Point {
@@ -20,7 +20,7 @@ impl core::fmt::Display for Point {
 
 impl Point {
     #[must_use]
-    pub const fn new(x: i32, y: i32) -> Self {
+    pub const fn new(x: i16, y: i16) -> Self {
         Self { x, y }
     }
 
@@ -78,8 +78,8 @@ impl core::ops::Add<Size> for Point {
     type Output = Self;
     fn add(self, rhs: Size) -> Self {
         Self {
-            x: self.x + rhs.width as i32,
-            y: self.y + rhs.height as i32,
+            x: self.x + rhs.width as i16,
+            y: self.y + rhs.height as i16,
         }
     }
 }
@@ -87,8 +87,8 @@ impl core::ops::Add<Size> for Point {
 impl Interpolate for Point {
     fn interpolate(from: Self, to: Self, amount: u8) -> Self {
         Self {
-            x: ((i32::from(amount) * to.x) + (i32::from(255 - amount) * from.x)) / 255,
-            y: ((i32::from(amount) * to.y) + (i32::from(255 - amount) * from.y)) / 255,
+            x: ((i16::from(amount) * to.x) + (i16::from(255 - amount) * from.x)) / 255,
+            y: ((i16::from(amount) * to.y) + (i16::from(255 - amount) * from.y)) / 255,
         }
     }
 }
@@ -96,18 +96,18 @@ impl Interpolate for Point {
 impl CoordinateSpaceTransform for Point {
     fn applying(&self, transform: &LinearTransform) -> Self {
         Self {
-            x: (self.x * transform.scale.cast_signed()).to_num::<i32>() + transform.offset.x,
-            y: (self.y * transform.scale.cast_signed()).to_num::<i32>() + transform.offset.y,
+            x: (self.x * transform.scale.cast_signed()).to_num::<i16>() + transform.offset.x,
+            y: (self.y * transform.scale.cast_signed()).to_num::<i16>() + transform.offset.y,
         }
     }
 
     fn applying_inverse(&self, transform: &LinearTransform) -> Self {
         let p = *self - transform.offset;
         Self {
-            x: (p.x.to_fixed::<fixed::types::I18F14>() / transform.scale.cast_signed())
-                .to_num::<i32>(),
-            y: (p.y.to_fixed::<fixed::types::I18F14>() / transform.scale.cast_signed())
-                .to_num::<i32>(),
+            x: (p.x.to_fixed::<fixed::types::I9F7>() / transform.scale.cast_signed())
+                .to_num::<i16>(),
+            y: (p.y.to_fixed::<fixed::types::I9F7>() / transform.scale.cast_signed())
+                .to_num::<i16>(),
         }
     }
 }
@@ -115,8 +115,8 @@ impl CoordinateSpaceTransform for Point {
 impl From<embedded_touch::TouchPoint> for Point {
     fn from(value: embedded_touch::TouchPoint) -> Self {
         Self {
-            x: value.x,
-            y: value.y,
+            x: value.x as i16,
+            y: value.y as i16,
         }
     }
 }
@@ -124,8 +124,8 @@ impl From<embedded_touch::TouchPoint> for Point {
 impl From<Point> for embedded_touch::TouchPoint {
     fn from(value: Point) -> Self {
         Self {
-            x: value.x,
-            y: value.y,
+            x: value.x as i32,
+            y: value.y as i32,
         }
     }
 }
@@ -133,7 +133,7 @@ impl From<Point> for embedded_touch::TouchPoint {
 #[cfg(feature = "embedded-graphics")]
 impl From<Point> for embedded_graphics_core::geometry::Point {
     fn from(value: Point) -> Self {
-        Self::new(value.x, value.y)
+        Self::new(value.x as i32, value.y as i32)
     }
 }
 
@@ -141,8 +141,8 @@ impl From<Point> for embedded_graphics_core::geometry::Point {
 impl From<embedded_graphics_core::geometry::Point> for Point {
     fn from(value: embedded_graphics_core::geometry::Point) -> Self {
         Self {
-            x: value.x,
-            y: value.y,
+            x: value.x as i16,
+            y: value.y as i16,
         }
     }
 }

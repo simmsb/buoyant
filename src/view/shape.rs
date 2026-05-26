@@ -30,7 +30,7 @@ pub trait Shape:
     ///
     /// The stroke is drawn inside the shape's bounds.
     #[must_use]
-    fn stroked(self, line_width: u32) -> Stroked<Self> {
+    fn stroked(self, line_width: u16) -> Stroked<Self> {
         Stroked::new(self, StrokeOffset::Inner, line_width)
     }
 
@@ -38,7 +38,7 @@ pub trait Shape:
     ///
     /// Using an offset other than [`StrokeOffset::Inner`] will render outside the shape's bounds.
     #[must_use]
-    fn stroked_offset(self, line_width: u32, offset: StrokeOffset) -> Stroked<Self> {
+    fn stroked_offset(self, line_width: u16, offset: StrokeOffset) -> Stroked<Self> {
         Stroked::new(self, offset, line_width)
     }
 }
@@ -65,12 +65,12 @@ pub enum StrokeOffset {
 pub struct Stroked<T> {
     shape: T,
     style: StrokeOffset,
-    line_width: u32,
+    line_width: u16,
 }
 
 impl<T: ViewMarker<Renderables: Inset + AsShapePrimitive>> Stroked<T> {
     /// Creates a new stroked shape with the given style and line width.
-    const fn new(shape: T, style: StrokeOffset, line_width: u32) -> Self {
+    const fn new(shape: T, style: StrokeOffset, line_width: u16) -> Self {
         Self {
             shape,
             style,
@@ -120,8 +120,8 @@ where
         state: &mut Self::State,
     ) -> Self::Renderables {
         let inset = match self.style {
-            StrokeOffset::Outer => -(self.line_width as i32 / 2),
-            StrokeOffset::Inner => self.line_width as i32 / 2,
+            StrokeOffset::Outer => -(self.line_width as i16 / 2),
+            StrokeOffset::Inner => self.line_width as i16 / 2,
             StrokeOffset::Center => 0,
         };
         StrokedShape::new(

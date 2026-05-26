@@ -423,8 +423,8 @@ fn draw_path_shape<C: PixelColor>(
                 if let Some(start) = last_point {
                     let end = Point::new(point.x + offset.x, point.y + offset.y);
 
-                    let start_eg = EgPoint::new(start.x, start.y);
-                    let end_eg = EgPoint::new(end.x, end.y);
+                    let start_eg = EgPoint::new(start.x as i32, start.y as i32);
+                    let end_eg = EgPoint::new(end.x as i32, end.y as i32);
 
                     let eg_line = EgLine::new(start_eg, end_eg).into_styled(*style);
                     let _ = eg_line.draw(target);
@@ -437,8 +437,8 @@ fn draw_path_shape<C: PixelColor>(
                 if let Some(start) = last_point {
                     let end = Point::new(point.x + offset.x, point.y + offset.y);
 
-                    let start_eg = EgPoint::new(start.x, start.y);
-                    let end_eg = EgPoint::new(end.x, end.y);
+                    let start_eg = EgPoint::new(start.x as i32, start.y as i32);
+                    let end_eg = EgPoint::new(end.x as i32, end.y as i32);
 
                     let eg_line = EgLine::new(start_eg, end_eg).into_styled(*style);
                     let _ = eg_line.draw(target);
@@ -451,8 +451,8 @@ fn draw_path_shape<C: PixelColor>(
                 if let Some(start) = last_point {
                     let end = Point::new(point.x + offset.x, point.y + offset.y);
 
-                    let start_eg = EgPoint::new(start.x, start.y);
-                    let end_eg = EgPoint::new(end.x, end.y);
+                    let start_eg = EgPoint::new(start.x as i32, start.y as i32);
+                    let end_eg = EgPoint::new(end.x as i32, end.y as i32);
 
                     let eg_line = EgLine::new(start_eg, end_eg).into_styled(*style);
                     let _ = eg_line.draw(target);
@@ -463,8 +463,8 @@ fn draw_path_shape<C: PixelColor>(
             PathEl::ClosePath => {
                 // Close the path by drawing a line back to the starting point
                 if let (Some(start), Some(first)) = (last_point, last_point) {
-                    let start_eg = EgPoint::new(start.x, start.y);
-                    let end_eg = EgPoint::new(first.x, first.y);
+                    let start_eg = EgPoint::new(start.x as i32, start.y as i32);
+                    let end_eg = EgPoint::new(first.x as i32, first.y as i32);
 
                     let eg_line = EgLine::new(start_eg, end_eg).into_styled(*style);
                     let _ = eg_line.draw(target);

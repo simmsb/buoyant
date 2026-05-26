@@ -290,13 +290,13 @@ pub trait ViewModifier: Sized + ViewMarker {
     ///
     /// # Examples
     ///
-    /// Erase a parent `u32` capture to insert a non-capturing component view:
+    /// Erase a parent `u16` capture to insert a non-capturing component view:
     ///
     /// ```
     /// use buoyant::view::prelude::*;
     /// use embedded_graphics::pixelcolor::Rgb888;
     ///
-    /// fn view() -> impl View<Rgb888, u32> {
+    /// fn view() -> impl View<Rgb888, u16> {
     ///     component_view().erase_captures()
     /// }
     ///
@@ -456,7 +456,7 @@ pub trait ViewModifier: Sized + ViewMarker {
     ///     .with_height(100)
     /// # ;
     /// ```
-    fn frame_sized(self, width: u32, height: u32) -> FixedFrame<Self> {
+    fn frame_sized(self, width: u16, height: u16) -> FixedFrame<Self> {
         FixedFrame::new(self).with_width(width).with_height(height)
     }
 
@@ -562,7 +562,7 @@ pub trait ViewModifier: Sized + ViewMarker {
     /// Offsets a view by the specified values.
     ///
     /// This does not affect size calculations, and is only applied when rendering the view.
-    fn offset(self, x: i32, y: i32) -> Offset<Self> {
+    fn offset(self, x: i16, y: i16) -> Offset<Self> {
         Offset::new(self, Point::new(x, y))
     }
 
@@ -635,7 +635,7 @@ pub trait ViewModifier: Sized + ViewMarker {
     }
 
     /// Applies padding to the specified edges
-    fn padding(self, edges: padding::Edges, amount: u32) -> Padding<Self> {
+    fn padding(self, edges: padding::Edges, amount: u16) -> Padding<Self> {
         Padding::new(edges, amount, self)
     }
 
@@ -746,8 +746,8 @@ pub trait ViewModifier: Sized + ViewMarker {
     /// };
     /// use embedded_graphics::pixelcolor::Rgb888;
     ///
-    /// fn expanding_button() -> impl View<Rgb888, i32> {
-    ///     Button::new(|_: &mut i32| {
+    /// fn expanding_button() -> impl View<Rgb888, i16> {
+    ///     Button::new(|_: &mut i16| {
     ///         // do something when pressed
     ///     }, |state| {
     ///         Rectangle

@@ -26,7 +26,7 @@ impl Interpolate for Scale {
 }
 
 impl font::CustomSize for Scale {
-    fn with_size(mut self, size: u32) -> Self {
+    fn with_size(mut self, size: u16) -> Self {
         self.0 = size as u8;
         self
     }
@@ -56,16 +56,16 @@ impl FontMetrics for GlyphrMetrics<'_> {
             glyph.height
         );
 
-        let scale = self.scale as i32;
+        let scale = self.scale as i16;
 
-        let y_offset = self.font.descent as i32
-            + (self.font.ascent as i32 - glyph.ymin as i32 - glyph.height as i32);
+        let y_offset = self.font.descent as i16
+            + (self.font.ascent as i16 - glyph.ymin as i16 - glyph.height as i16);
 
         let region = Rectangle::new(
-            Point::new(scale * glyph.xmin as i32, scale * y_offset),
+            Point::new(scale * glyph.xmin as i16, scale * y_offset),
             Size::new(
-                (scale * glyph.width as i32) as u32,
-                (scale * glyph.height as i32) as u32,
+                (scale * glyph.width as i16) as u16,
+                (scale * glyph.height as i16) as u16,
             ),
         );
 
@@ -82,16 +82,16 @@ impl FontMetrics for GlyphrMetrics<'_> {
             self.font.line_gap,
         );
 
-        let scale = self.scale as i32;
+        let scale = self.scale as i16;
 
         super::VMetrics {
-            ascent: scale * self.font.ascent as i32,
-            descent: scale * self.font.descent as i32,
-            line_spacing: scale * self.font.line_gap as i32,
+            ascent: scale * self.font.ascent as i16,
+            descent: scale * self.font.descent as i16,
+            line_spacing: scale * self.font.line_gap as i16,
         }
     }
 
-    fn advance(&self, character: char) -> u32 {
+    fn advance(&self, character: char) -> u16 {
         let Ok(glyph) = self.font.find_glyph(character) else {
             defmt::trace!("(advance) No glyph found for: {}", character);
             return 0;
@@ -102,7 +102,7 @@ impl FontMetrics for GlyphrMetrics<'_> {
             glyph.advance_width
         );
 
-        self.scale as u32 * glyph.advance_width as u32
+        self.scale as u16 * glyph.advance_width as u16
     }
 }
 
@@ -145,11 +145,11 @@ where
                 return;
             };
 
-            let y_offset = self.ascent as i32 - glyph.ymin as i32 - glyph.height as i32;
+            let y_offset = self.ascent as i16 - glyph.ymin as i16 - glyph.height as i16;
 
             let region = Rectangle::new(
-                offset + Point::new(glyph.xmin as i32, y_offset),
-                Size::new(glyph.width as u32, glyph.height as u32),
+                offset + Point::new(glyph.xmin as i16, y_offset),
+                Size::new(glyph.width as u16, glyph.height as u16),
             );
 
             surface.fill_contiguous(
@@ -165,13 +165,13 @@ where
                 return;
             };
 
-            let y_offset = self.ascent as i32 - glyph.ymin as i32 - glyph.height as i32;
+            let y_offset = self.ascent as i16 - glyph.ymin as i16 - glyph.height as i16;
 
             let region = Rectangle::new(
-                offset + Point::new(scale as i32 * glyph.xmin as i32, scale as i32 * y_offset),
+                offset + Point::new(scale as i16 * glyph.xmin as i16, scale as i16 * y_offset),
                 Size::new(
-                    scale as u32 * glyph.width as u32,
-                    scale as u32 * glyph.height as u32,
+                    scale as u16 * glyph.width as u16,
+                    scale as u16 * glyph.height as u16,
                 ),
             );
 

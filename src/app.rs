@@ -355,7 +355,7 @@ where
     }
 
     /// Draws the focus as a stroked shape on the given render target.
-    pub fn draw_focus_overlay<T, C>(&self, target: &mut T, color: C, line_width: u32)
+    pub fn draw_focus_overlay<T, C>(&self, target: &mut T, color: C, line_width: u16)
     where
         T: RenderTarget<ColorFormat = C>,
         C: Copy,

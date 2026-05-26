@@ -19,7 +19,7 @@ use super::Diffable;
 pub trait Inset {
     /// Returns the inset version of the shape.
     #[must_use]
-    fn inset(self, amount: i32) -> Self;
+    fn inset(self, amount: i16) -> Self;
 }
 
 pub trait AsShapePrimitive {
@@ -79,12 +79,12 @@ impl<T: AnimatedJoin + Diffable + Clone + AsShapePrimitive + IntrinsicShape, C: 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StrokedShape<T> {
     shape: T,
-    line_width: u32,
+    line_width: u16,
 }
 
 impl<T> StrokedShape<T> {
     #[must_use]
-    pub const fn new(shape: T, line_width: u32) -> Self {
+    pub const fn new(shape: T, line_width: u16) -> Self {
         Self { shape, line_width }
     }
 }
@@ -118,7 +118,7 @@ impl<T: PartialEq + Diffable + AsShapePrimitive> Diffable for StrokedShape<T> {
 impl<T: AnimatedJoin> AnimatedJoin for StrokedShape<T> {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
         self.shape.join_from(&source.shape, domain);
-        self.line_width = u32::interpolate(source.line_width, self.line_width, domain.factor);
+        self.line_width = u16::interpolate(source.line_width, self.line_width, domain.factor);
     }
 }
 

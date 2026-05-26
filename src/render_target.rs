@@ -178,12 +178,12 @@ impl<C: Copy> Brush for SolidBrush<C> {
 #[non_exhaustive]
 pub struct Stroke {
     /// Width of the stroke.
-    pub width: u32,
+    pub width: u16,
 }
 
 impl Stroke {
     #[must_use]
-    pub const fn new(width: u32) -> Self {
+    pub const fn new(width: u16) -> Self {
         Self { width }
     }
 }
@@ -291,9 +291,9 @@ impl<'a, C: Interpolate + Copy> LayerHandle<'a, C> {
 
     pub fn offset(self, offset: Point) -> Self {
         self.layer.transform.offset.x +=
-            (offset.x * self.layer.transform.scale.cast_signed()).to_num::<i32>();
+            (offset.x * self.layer.transform.scale.cast_signed()).to_num::<i16>();
         self.layer.transform.offset.y +=
-            (offset.y * self.layer.transform.scale.cast_signed()).to_num::<i32>();
+            (offset.y * self.layer.transform.scale.cast_signed()).to_num::<i16>();
         self
     }
 

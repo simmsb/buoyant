@@ -10,8 +10,8 @@ use crate::primitives::{
 #[derive(defmt::Format)]
 #[derive(Debug, PartialEq, Eq, Clone, Copy, Default)]
 pub struct Size {
-    pub width: u32,
-    pub height: u32,
+    pub width: u16,
+    pub height: u16,
 }
 
 impl core::fmt::Display for Size {
@@ -22,7 +22,7 @@ impl core::fmt::Display for Size {
 
 impl Size {
     #[must_use]
-    pub const fn new(width: u32, height: u32) -> Self {
+    pub const fn new(width: u16, height: u16) -> Self {
         Self { width, height }
     }
 
@@ -55,12 +55,12 @@ impl Size {
     /// Returns true if the point is non-negative and within the bounds of the size.
     #[must_use]
     pub const fn contains(&self, point: Point) -> bool {
-        point.x >= 0 && point.y >= 0 && point.x < self.width as i32 && point.y < self.height as i32
+        point.x >= 0 && point.y >= 0 && point.x < self.width as i16 && point.y < self.height as i16
     }
 
     #[inline]
     #[must_use]
-    pub const fn area(&self) -> u32 {
+    pub const fn area(&self) -> u16 {
         self.width * self.height
     }
 }
@@ -79,8 +79,8 @@ impl core::ops::Add for Size {
 impl From<embedded_graphics_core::geometry::Size> for Size {
     fn from(value: embedded_graphics_core::geometry::Size) -> Self {
         Self {
-            width: value.width,
-            height: value.height,
+            width: value.width as u16,
+            height: value.height as u16,
         }
     }
 }
@@ -88,11 +88,11 @@ impl From<embedded_graphics_core::geometry::Size> for Size {
 #[cfg(feature = "embedded-graphics")]
 impl From<Size> for embedded_graphics_core::geometry::Size {
     fn from(value: Size) -> Self {
-        Self::new(value.width, value.height)
+        Self::new(value.width as u32, value.height as u32)
     }
 }
 
-impl<T: Into<u32>> From<(T, T)> for Size {
+impl<T: Into<u16>> From<(T, T)> for Size {
     fn from(value: (T, T)) -> Self {
         Self {
             width: value.0.into(),

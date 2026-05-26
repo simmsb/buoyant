@@ -19,7 +19,7 @@ pub enum ContentMode {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Ratio {
     /// A fixed aspect ratio defined by width and height
-    Fixed(u32, u32),
+    Fixed(u16, u16),
     /// Maintains the ideal aspect ratio of the child view.
     ///
     /// For most views this will be a square.

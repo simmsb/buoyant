@@ -11,9 +11,9 @@ pub struct WordWrap<'a, F> {
     available_width: ProposedDimension,
     font: &'a F,
     calculate_precise_bounds: bool,
-    current_y: i32,
-    first_non_empty_line: Option<(&'a str, i32)>,
-    last_non_empty_line: Option<(&'a str, i32)>,
+    current_y: i16,
+    first_non_empty_line: Option<(&'a str, i16)>,
+    last_non_empty_line: Option<(&'a str, i16)>,
 }
 
 impl<'a, F: FontMetrics> WordWrap<'a, F> {
@@ -37,13 +37,13 @@ impl<'a, F: FontMetrics> WordWrap<'a, F> {
 
     /// Get the first non-empty line and its Y offset.
     #[expect(clippy::ref_option)]
-    pub fn first_non_empty_line(&self) -> &'_ Option<(&'a str, i32)> {
+    pub fn first_non_empty_line(&self) -> &'_ Option<(&'a str, i16)> {
         &self.first_non_empty_line
     }
 
     /// Get the last non-empty line and its Y offset.
     #[expect(clippy::ref_option)]
-    pub fn last_non_empty_line(&self) -> &'_ Option<(&'a str, i32)> {
+    pub fn last_non_empty_line(&self) -> &'_ Option<(&'a str, i16)> {
         &self.last_non_empty_line
     }
 
@@ -54,8 +54,8 @@ impl<'a, F: FontMetrics> WordWrap<'a, F> {
     fn calculate_precise_width_and_extents(
         &self,
         text: &str,
-        advance_width: u32,
-    ) -> (u32, i32, i32) {
+        advance_width: u16,
+    ) -> (u16, i16, i16) {
         if advance_width == 0 {
             return (0, 0, 0);
         }
@@ -79,26 +79,26 @@ impl<'a, F: FontMetrics> WordWrap<'a, F> {
             .unwrap_or_else(|| Rectangle::new(Point::zero(), Size::new(last_char_advance, 0)));
 
         let min_x = first_bounds.origin.x;
-        let max_x = advance_width as i32 - last_char_advance as i32
+        let max_x = advance_width as i16 - last_char_advance as i16
             + last_bounds.origin.x
-            + last_bounds.size.width as i32;
+            + last_bounds.size.width as i16;
 
         let precise_width =
-            (advance_width as i32 - first_bounds.origin.x - last_char_advance as i32
+            (advance_width as i16 - first_bounds.origin.x - last_char_advance as i16
                 + last_bounds.origin.x
-                + last_bounds.size.width as i32)
-                .max(0) as u32;
+                + last_bounds.size.width as i16)
+                .max(0) as u16;
 
         (precise_width, min_x, max_x)
     }
 
     /// Calculate width for a line when we don't already have it from iteration.
-    fn calculate_width(&self, text: &str) -> u32 {
+    fn calculate_width(&self, text: &str) -> u16 {
         text.chars().map(|ch| self.font.advance(ch)).sum()
     }
 
     /// Helper to create a `WrappedLine` with appropriate precise width.
-    fn make_wrapped_line(&mut self, content: &'a str, width: u32) -> WrappedLine<'a> {
+    fn make_wrapped_line(&mut self, content: &'a str, width: u16) -> WrappedLine<'a> {
         let (precise_width, min_x, max_x) = if self.calculate_precise_bounds {
             self.calculate_precise_width_and_extents(content, width)
         } else {
@@ -113,7 +113,7 @@ impl<'a, F: FontMetrics> WordWrap<'a, F> {
             self.last_non_empty_line = Some((content, self.current_y));
         }
 
-        self.current_y += self.font.vertical_metrics().line_height() as i32;
+        self.current_y += self.font.vertical_metrics().line_height() as i16;
 
         WrappedLine {
             content,
@@ -125,7 +125,7 @@ impl<'a, F: FontMetrics> WordWrap<'a, F> {
     }
 
     /// Helper function to find force split position, returns `(split_pos, width_up_to_split)`
-    fn find_split_pos(&self, text: &str) -> Option<(usize, u32)> {
+    fn find_split_pos(&self, text: &str) -> Option<(usize, u16)> {
         let mut width = 0;
         for (pos, ch) in text.char_indices() {
             let char_width = self.font.advance(ch);
@@ -163,7 +163,7 @@ impl<'a, F: FontMetrics + 'a> Iterator for WordWrap<'a, F> {
         }
 
         let mut width = 0;
-        let mut last_space: Option<(usize, u32)> = None;
+        let mut last_space: Option<(usize, u16)> = None;
 
         // Single pass through the string to find split points
         for (pos, ch) in self.remaining.char_indices() {
@@ -274,7 +274,7 @@ mod tests {
     /// Helper function to calculate expected precise width for a line of text.
     /// This checks first and last non-whitespace characters to determine tight width.
     /// Returns 0 for empty or whitespace-only lines.
-    fn calculate_expected_precise_width(text: &str, metrics: &impl FontMetrics) -> u32 {
+    fn calculate_expected_precise_width(text: &str, metrics: &impl FontMetrics) -> u16 {
         if text.is_empty() {
             return 0;
         }
@@ -282,9 +282,9 @@ mod tests {
         let mut chars = text.chars().peekable();
 
         // Find first non-whitespace character
-        let mut advance = 0u32;
+        let mut advance = 0u16;
         let mut first_char = None;
-        let mut first_advance = 0u32;
+        let mut first_advance = 0u16;
 
         for ch in chars.by_ref() {
             if !ch.is_whitespace() {
@@ -322,9 +322,9 @@ mod tests {
 
         let left_offset = first_bounds.origin.x;
         let right_extent =
-            last_advance as i32 + last_bounds.origin.x + last_bounds.size.width as i32;
+            last_advance as i16 + last_bounds.origin.x + last_bounds.size.width as i16;
 
-        (right_extent - first_advance as i32 - left_offset) as u32
+        (right_extent - first_advance as i16 - left_offset) as u16
     }
 
     #[test]
@@ -556,7 +556,7 @@ mod tests {
             }
         }
 
-        fn advance(&self, character: char) -> u32 {
+        fn advance(&self, character: char) -> u16 {
             if character.is_whitespace() {
                 2
             } else if character.is_ascii_digit() {
@@ -779,14 +779,14 @@ mod tests {
     }
 
     struct FontTrace<F> {
-        rendered_size_calls: RefCell<u32>,
-        advance_calls: RefCell<u32>,
+        rendered_size_calls: RefCell<u16>,
+        advance_calls: RefCell<u16>,
         inner: F,
     }
 
     struct TraceMetrics<'a, F> {
-        rendered_size_calls: &'a RefCell<u32>,
-        advance_calls: &'a RefCell<u32>,
+        rendered_size_calls: &'a RefCell<u16>,
+        advance_calls: &'a RefCell<u16>,
         inner: F,
     }
 
@@ -800,7 +800,7 @@ mod tests {
             self.inner.vertical_metrics()
         }
 
-        fn advance(&self, character: char) -> u32 {
+        fn advance(&self, character: char) -> u16 {
             *self.advance_calls.borrow_mut() += 1;
             self.inner.advance(character)
         }

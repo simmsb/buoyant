@@ -55,10 +55,10 @@ pub struct Text<'a, T, F: Font> {
 #[derive(Debug, PartialEq, Eq)]
 pub struct WrappedLine<'a> {
     pub content: &'a str,
-    pub width: u32,
-    pub precise_width: u32,
-    pub min_x: i32,
-    pub max_x: i32,
+    pub width: u16,
+    pub precise_width: u16,
+    pub min_x: i16,
+    pub max_x: i16,
 }
 
 #[derive(Default, Debug, Clone, PartialEq, Eq)]
@@ -81,7 +81,7 @@ pub enum HorizontalTextAlignment {
 }
 
 impl HorizontalTextAlignment {
-    pub(crate) const fn align(self, available: i32, content: i32) -> i32 {
+    pub(crate) const fn align(self, available: i16, content: i16) -> i16 {
         match self {
             Self::Leading => 0,
             Self::Center => (available - content) / 2,
@@ -132,19 +132,19 @@ impl<'a, T: AsRef<str>, F: Font> Text<'a, T, F> {
 fn calculate_vertical_extent(
     metrics: &impl FontMetrics,
     text: &str,
-    y_offset: i32,
-) -> Option<(i32, i32)> {
+    y_offset: i16,
+) -> Option<(i16, i16)> {
     if text.is_empty() {
         return None;
     }
 
-    let mut min_y = i32::MAX;
-    let mut max_y = i32::MIN;
+    let mut min_y = i16::MAX;
+    let mut max_y = i16::MIN;
 
     for ch in text.chars() {
         if let Some(char_bounds) = metrics.rendered_size(ch) {
             let top = char_bounds.origin.y + y_offset;
-            let bottom = top + char_bounds.size.height as i32;
+            let bottom = top + char_bounds.size.height as i16;
             min_y = core::cmp::min(min_y, top);
             max_y = core::cmp::max(max_y, bottom);
         }
@@ -170,7 +170,7 @@ impl<'a, F: Font> Text<'a, (), F> {
     /// # use embedded_graphics::mono_font::ascii::FONT_9X15_BOLD;
     /// # use embedded_graphics::pixelcolor::Rgb888;
     /// #
-    /// fn counter(count: i32) -> impl View<Rgb888, ()> {
+    /// fn counter(count: i16) -> impl View<Rgb888, ()> {
     ///    Text::new_fmt::<32>(format_args!("Count: {count}"), &FONT_9X15_BOLD)
     /// }
     /// ```
@@ -248,7 +248,7 @@ impl<T, F: Font> Text<'_, T, F> {
 impl<T, F: Font<Attributes: CustomSize>> Text<'_, T, F> {
     /// Sets the font size
     #[must_use]
-    pub fn with_font_size(self, size: u32) -> Self {
+    pub fn with_font_size(self, size: u16) -> Self {
         Text {
             attributes: self.attributes.with_size(size),
             ..self
@@ -294,7 +294,7 @@ where
 
         let max_line_count = match offer.height {
             ProposedDimension::Exact(h) => h / line_height,
-            _ => u32::MAX,
+            _ => u16::MAX,
         };
 
         let mut size = Size::zero();
@@ -316,13 +316,13 @@ where
             WrapStrategy::Character => word.next(),
         });
 
-        let mut line_count: u32 = 0;
+        let mut line_count: u16 = 0;
 
         // Iterate through lines, tracking width and horizontal extents
         // Always use advance-based width for wrapping consistency
-        let mut max_precise_width = 0u32;
-        let mut global_min_x = 0i32;
-        let mut global_max_x = 0i32;
+        let mut max_precise_width = 0u16;
+        let mut global_min_x = 0i16;
+        let mut global_max_x = 0i16;
         let mut has_content = false;
 
         for line in (&mut wrap).take(max_line_count as usize) {
@@ -347,8 +347,8 @@ where
         size.height = line_count * line_height;
 
         // Calculate vertical extent from first and last non-empty lines
-        let mut min_y = 0i32;
-        let mut max_y = 0i32;
+        let mut min_y = 0i16;
+        let mut max_y = 0i16;
         let mut has_vertical_extent = false;
 
         if self.precise_character_bounds {
@@ -397,8 +397,8 @@ where
 
             // Use the horizontal extent across all lines and vertical extent from boundary lines
             // The width is calculated from the global min/max x, accounting for all lines
-            let precise_width = (global_max_x - global_min_x) as u32;
-            let precise_height = (max_y - min_y) as u32;
+            let precise_width = (global_max_x - global_min_x) as u16;
+            let precise_height = (max_y - min_y) as u16;
 
             size = Size::new(precise_width, precise_height);
         }
@@ -485,7 +485,7 @@ mod test {
     }
 
     impl ArbitraryFont {
-        fn new(line_height: u32, character_width: u32) -> Self {
+        fn new(line_height: u16, character_width: u16) -> Self {
             Self {
                 metrics: ArbitraryFontMetrics {
                     line_height,
@@ -519,8 +519,8 @@ mod test {
 
     #[derive(Debug)]
     struct ArbitraryFontMetrics {
-        line_height: u32,
-        character_width: u32,
+        line_height: u16,
+        character_width: u16,
     }
 
     impl FontMetrics for ArbitraryFontMetrics {
@@ -533,13 +533,13 @@ mod test {
 
         fn vertical_metrics(&self) -> crate::font::VMetrics {
             crate::font::VMetrics {
-                ascent: self.line_height as i32,
+                ascent: self.line_height as i16,
                 descent: 0,
                 line_spacing: 0,
             }
         }
 
-        fn advance(&self, _: char) -> u32 {
+        fn advance(&self, _: char) -> u16 {
             self.character_width
         }
     }

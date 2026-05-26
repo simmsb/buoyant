@@ -23,9 +23,9 @@ pub struct CharacterWrap<'a, F> {
     available_width: ProposedDimension,
     font: &'a F,
     calculate_precise_bounds: bool,
-    current_y: i32,
-    first_non_empty_line: Option<(&'a str, i32)>,
-    last_non_empty_line: Option<(&'a str, i32)>,
+    current_y: i16,
+    first_non_empty_line: Option<(&'a str, i16)>,
+    last_non_empty_line: Option<(&'a str, i16)>,
 }
 
 impl<'a, F: FontMetrics> CharacterWrap<'a, F> {
@@ -48,13 +48,13 @@ impl<'a, F: FontMetrics> CharacterWrap<'a, F> {
 
     /// Get the first non-empty line and its Y offset.
     #[expect(clippy::ref_option)]
-    pub fn first_non_empty_line(&self) -> &'_ Option<(&'a str, i32)> {
+    pub fn first_non_empty_line(&self) -> &'_ Option<(&'a str, i16)> {
         &self.first_non_empty_line
     }
 
     /// Get the last non-empty line and its Y offset.
     #[expect(clippy::ref_option)]
-    pub fn last_non_empty_line(&self) -> &'_ Option<(&'a str, i32)> {
+    pub fn last_non_empty_line(&self) -> &'_ Option<(&'a str, i16)> {
         &self.last_non_empty_line
     }
 
@@ -65,8 +65,8 @@ impl<'a, F: FontMetrics> CharacterWrap<'a, F> {
     fn calculate_precise_width_and_extents(
         &self,
         text: &str,
-        advance_width: u32,
-    ) -> (u32, i32, i32) {
+        advance_width: u16,
+    ) -> (u16, i16, i16) {
         if advance_width == 0 {
             return (0, 0, 0);
         }
@@ -90,21 +90,21 @@ impl<'a, F: FontMetrics> CharacterWrap<'a, F> {
             .unwrap_or_else(|| Rectangle::new(Point::zero(), Size::new(last_char_advance, 0)));
 
         let min_x = first_bounds.origin.x;
-        let max_x = advance_width as i32 - last_char_advance as i32
+        let max_x = advance_width as i16 - last_char_advance as i16
             + last_bounds.origin.x
-            + last_bounds.size.width as i32;
+            + last_bounds.size.width as i16;
 
         let precise_width =
-            (advance_width as i32 - first_bounds.origin.x - last_char_advance as i32
+            (advance_width as i16 - first_bounds.origin.x - last_char_advance as i16
                 + last_bounds.origin.x
-                + last_bounds.size.width as i32)
-                .max(0) as u32;
+                + last_bounds.size.width as i16)
+                .max(0) as u16;
 
         (precise_width, min_x, max_x)
     }
 
     /// Helper to create a `WrappedLine` with appropriate precise width.
-    fn make_wrapped_line(&mut self, content: &'a str, width: u32) -> WrappedLine<'a> {
+    fn make_wrapped_line(&mut self, content: &'a str, width: u16) -> WrappedLine<'a> {
         let (precise_width, min_x, max_x) = if self.calculate_precise_bounds {
             self.calculate_precise_width_and_extents(content, width)
         } else {
@@ -119,7 +119,7 @@ impl<'a, F: FontMetrics> CharacterWrap<'a, F> {
             self.last_non_empty_line = Some((content, self.current_y));
         }
 
-        self.current_y += self.font.vertical_metrics().line_height() as i32;
+        self.current_y += self.font.vertical_metrics().line_height() as i16;
 
         WrappedLine {
             content,
@@ -282,7 +282,7 @@ mod tests {
             }
         }
 
-        fn advance(&self, character: char) -> u32 {
+        fn advance(&self, character: char) -> u16 {
             if character.is_whitespace() {
                 2
             } else if character.is_ascii_digit() {

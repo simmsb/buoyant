@@ -13,7 +13,7 @@ use super::Diffable;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Line {
     pub range: Range<usize>,
-    pub pixel_width: u32,
+    pub pixel_width: u16,
 }
 
 #[derive(Debug, PartialEq, Eq)]
@@ -136,19 +136,19 @@ impl<C: Copy, T: AsRef<str> + Clone, F: FontRender<C>> Render<C> for Text<'_, T,
         for line in wrap.into_iter().take(self.max_lines as usize) {
             let width = line.width;
 
-            let line_x = self.alignment.align(size.width as i32, width as i32) + self.origin.x;
+            let line_x = self.alignment.align(size.width as i16, width as i16) + self.origin.x;
             let mut x = 0;
 
             let line_offset = Point::new(line_x, self.origin.y + height);
             let line_bounding_box = Rectangle::new(line_offset, Size::new(width, line_height));
-            if line_bounding_box.origin.y > clip_rect.origin.y + clip_rect.size.height as i32 {
+            if line_bounding_box.origin.y > clip_rect.origin.y + clip_rect.size.height as i16 {
                 break;
             }
             // FIXME: This could skip all the initial lines outside the loop
-            if (line_bounding_box.origin.y + line_bounding_box.size.height as i32)
+            if (line_bounding_box.origin.y + line_bounding_box.size.height as i16)
                 < clip_rect.origin.y
             {
-                height += line_height as i32;
+                height += line_height as i16;
             } else {
                 render_target.draw_glyphs(
                     line_offset,
@@ -158,7 +158,7 @@ impl<C: Copy, T: AsRef<str> + Clone, F: FontRender<C>> Render<C> for Text<'_, T,
                             character: c,
                             offset: Point::new(x, 0),
                         };
-                        x += metrics.advance(glyph.character) as i32;
+                        x += metrics.advance(glyph.character) as i16;
                         glyph
                     }),
                     self.font,
@@ -166,7 +166,7 @@ impl<C: Copy, T: AsRef<str> + Clone, F: FontRender<C>> Render<C> for Text<'_, T,
                     &line_bounding_box,
                 );
 
-                height += line_height as i32;
+                height += line_height as i16;
             }
         }
     }

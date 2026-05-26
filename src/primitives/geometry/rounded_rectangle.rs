@@ -10,12 +10,12 @@ use crate::primitives::{
 pub struct RoundedRectangle {
     pub origin: Point,
     pub size: Size,
-    pub radius: u32,
+    pub radius: u16,
 }
 
 impl RoundedRectangle {
     #[must_use]
-    pub const fn new(origin: Point, size: Size, radius: u32) -> Self {
+    pub const fn new(origin: Point, size: Size, radius: u16) -> Self {
         Self {
             origin,
             size,
@@ -64,7 +64,7 @@ impl From<RoundedRectangle> for embedded_graphics::primitives::RoundedRectangle 
 
         Self::new(
             Rectangle::new(value.origin, value.size).into(),
-            CornerRadii::new(Size::new_equal(value.radius)),
+            CornerRadii::new(Size::new_equal(value.radius as u32)),
         )
     }
 }
@@ -76,9 +76,9 @@ impl Shape for RoundedRectangle {
         Self: 'iter;
 
     fn path_elements(&self, _tolerance: u16) -> Self::PathElementsIter<'_> {
-        let r = self.radius as i32;
-        let width = self.size.width as i32;
-        let height = self.size.height as i32;
+        let r = self.radius as i16;
+        let width = self.size.width as i16;
+        let height = self.size.height as i16;
         let x = self.origin.x;
         let y = self.origin.y;
 

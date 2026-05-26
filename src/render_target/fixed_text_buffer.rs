@@ -33,7 +33,7 @@ impl<const W: usize, const H: usize> FixedTextBuffer<W, H> {
 
     #[must_use]
     pub const fn size(&self) -> Size {
-        Size::new(W as u32, H as u32)
+        Size::new(W as u16, H as u16)
     }
 }
 
@@ -53,7 +53,7 @@ impl<const W: usize, const H: usize> Default for FixedTextBuffer<W, H> {
     fn default() -> Self {
         Self {
             text: [[' '; W]; H],
-            active_layer: LayerConfig::new_sized(Size::new(W as u32, H as u32)),
+            active_layer: LayerConfig::new_sized(Size::new(W as u16, H as u16)),
             active_animation: true,
         }
     }
@@ -121,8 +121,8 @@ impl<const W: usize, const H: usize> RenderTarget for FixedTextBuffer<W, H> {
                 return;
             };
             let color = color.into();
-            for y in transform.offset.y..(transform.offset.y + rect.size.height as i32) {
-                for x in transform.offset.x..(transform.offset.x + rect.size.width as i32) {
+            for y in transform.offset.y..(transform.offset.y + rect.size.height as i16) {
+                for x in transform.offset.x..(transform.offset.x + rect.size.width as i16) {
                     let point = Point::new(rect.origin.x + x, rect.origin.y + y);
                     self.draw_character(point, color);
                 }
@@ -154,9 +154,9 @@ impl<const W: usize, const H: usize> RenderTarget for FixedTextBuffer<W, H> {
                 return;
             };
             let color = color.into();
-            for y in 0..rect.size.height as i32 {
-                if y == 0 || y == rect.size.height as i32 {
-                    for x in 0..rect.size.width as i32 {
+            for y in 0..rect.size.height as i16 {
+                if y == 0 || y == rect.size.height as i16 {
+                    for x in 0..rect.size.width as i16 {
                         let point = Point::new(rect.origin.x + x, rect.origin.y + y);
                         self.draw_character(point, color);
                     }
@@ -164,7 +164,7 @@ impl<const W: usize, const H: usize> RenderTarget for FixedTextBuffer<W, H> {
                     let point = Point::new(rect.origin.x, rect.origin.y + y);
                     self.draw_character(point, color);
                     let point =
-                        Point::new(rect.origin.x + rect.size.width as i32, rect.origin.y + y);
+                        Point::new(rect.origin.x + rect.size.width as i16, rect.origin.y + y);
                     self.draw_character(point, color);
                 }
             }
@@ -214,8 +214,8 @@ impl<const W: usize, const H: usize> Surface for FixedTextBuffer<W, H> {
     fn fill_contiguous<I>(&mut self, area: &Rectangle, colors: I)
     where
         I: IntoIterator<Item = Self::Color> {
-        let x_end = area.origin.x + area.size.width as i32;
-        let y_end = area.origin.y + area.size.height as i32;
+        let x_end = area.origin.x + area.size.width as i16;
+        let y_end = area.origin.y + area.size.height as i16;
         let points = (area.origin.y..y_end)
             .flat_map(move |y| (area.origin.x..x_end).map(move |x| Point::new(x, y)));
         self.draw_iter(

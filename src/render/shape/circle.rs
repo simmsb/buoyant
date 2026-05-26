@@ -7,19 +7,19 @@ use super::{AnimatedJoin, AnimationDomain};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Circle {
     pub origin: Point,
-    pub diameter: u32,
+    pub diameter: u16,
 }
 
 impl Circle {
     /// Creates a new circle with the given origin and diameter.
     #[must_use]
-    pub const fn new(origin: Point, diameter: u32) -> Self {
+    pub const fn new(origin: Point, diameter: u16) -> Self {
         Self { origin, diameter }
     }
 }
 
 impl Inset for Circle {
-    fn inset(mut self, amount: i32) -> Self {
+    fn inset(mut self, amount: i16) -> Self {
         self.diameter = self.diameter.saturating_add_signed(-2 * amount);
         self.origin.x += amount;
         self.origin.y += amount;
@@ -59,8 +59,8 @@ impl AnimatedJoin for Circle {
         // fitting circle. Diameter drift is not noticeable, while drift in the leading/trailing
         // edges is.
         let bottom_right = Point::interpolate(
-            source.origin + Point::new(source.diameter as i32, source.diameter as i32),
-            self.origin + Point::new(self.diameter as i32, self.diameter as i32),
+            source.origin + Point::new(source.diameter as i16, source.diameter as i16),
+            self.origin + Point::new(self.diameter as i16, self.diameter as i16),
             domain.factor,
         );
         self.origin = Point::interpolate(source.origin, self.origin, domain.factor);
@@ -162,8 +162,8 @@ mod tests {
         for factor in 0..=255 {
             let mut target = original_target.clone();
             target.join_from(&source, &animation_domain(factor));
-            assert_eq!(target.origin.x + target.diameter as i32, 1000);
-            assert_eq!(target.origin.y + target.diameter as i32, 1000);
+            assert_eq!(target.origin.x + target.diameter as i16, 1000);
+            assert_eq!(target.origin.y + target.diameter as i16, 1000);
         }
     }
 }

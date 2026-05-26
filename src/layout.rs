@@ -60,7 +60,7 @@ pub enum HorizontalAlignment {
 
 impl HorizontalAlignment {
     #[must_use]
-    pub const fn align(&self, available: i32, content: i32) -> i32 {
+    pub const fn align(&self, available: i16, content: i16) -> i16 {
         match self {
             Self::Leading => 0,
             Self::Center => (available - content) / 2,
@@ -83,7 +83,7 @@ pub enum VerticalAlignment {
 
 impl VerticalAlignment {
     #[must_use]
-    pub const fn align(&self, available: i32, content: i32) -> i32 {
+    pub const fn align(&self, available: i16, content: i16) -> i16 {
         match self {
             Self::Top => 0,
             Self::Center => (available - content) / 2,
@@ -114,8 +114,8 @@ impl<C: Clone + PartialEq> ResolvedLayout<C> {
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Axis {
-    FixedWidth(u32),
-    FixedHeight(u32),
+    FixedWidth(u16),
+    FixedHeight(u16),
 }
 
 impl Axis {

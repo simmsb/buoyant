@@ -15,14 +15,14 @@ impl Font for MonoFont<'_> {
     fn metrics(&self, _attributes: &Self::Attributes) -> impl FontMetrics {
         let size = self.character_size.into();
         let v_metrics = font::VMetrics {
-            ascent: self.baseline as i32,
-            descent: self.baseline as i32 - self.character_size.height as i32,
+            ascent: self.baseline as i16,
+            descent: self.baseline as i16 - self.character_size.height as i16,
             line_spacing: 0,
         };
         MonoFontMetrics {
             size,
             v_metrics,
-            advance: self.character_spacing + self.character_size.width,
+            advance: (self.character_spacing + self.character_size.width) as u16,
         }
     }
 }
@@ -45,7 +45,7 @@ impl<C: PixelColor> FontRender<C> for MonoFont<'_> {
             .font(self)
             .text_color(color)
             .build();
-        offset.y += self.baseline as i32;
+        offset.y += self.baseline as i16;
         _ = Text::new(&s, offset.into(), style).draw(&mut surface.draw_target());
     }
 }
@@ -54,7 +54,7 @@ impl<C: PixelColor> FontRender<C> for MonoFont<'_> {
 struct MonoFontMetrics {
     size: Size,
     v_metrics: font::VMetrics,
-    advance: u32,
+    advance: u16,
 }
 
 impl FontMetrics for MonoFontMetrics {
@@ -66,7 +66,7 @@ impl FontMetrics for MonoFontMetrics {
         self.v_metrics
     }
 
-    fn advance(&self, _: char) -> u32 {
+    fn advance(&self, _: char) -> u16 {
         self.advance
     }
 }

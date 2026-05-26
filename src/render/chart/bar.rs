@@ -16,8 +16,8 @@ pub struct ChartBar {
 impl ChartBar {
     fn to_rectangle(self) -> Rectangle {
         Rectangle::new(
-            Point::new(i32::from(self.x), i32::from(self.y)),
-            Size::new(self.width.max(0) as u32, self.height.max(0) as u32),
+            Point::new(i16::from(self.x), i16::from(self.y)),
+            Size::new(self.width.max(0) as u16, self.height.max(0) as u16),
         )
     }
 }

@@ -50,7 +50,7 @@ where
     items: &'a [I],
     build_view: F,
     direction_with_alignment: D,
-    spacing: u32,
+    spacing: u16,
 }
 
 /// Specifies a vertical direction for `ForEach`. Used in [`ForEachView::with_direction`].
@@ -62,8 +62,8 @@ pub struct Horizontal(pub VerticalAlignment);
 
 pub trait ForEachDirection: Copy + Default {
     fn layout_dir() -> LayoutDirection;
-    fn align(&self, accumulated: i32, layout_size: Dimensions, item_size: Dimensions) -> Point;
-    fn size_of(&self, item_size: Dimensions) -> i32;
+    fn align(&self, accumulated: i16, layout_size: Dimensions, item_size: Dimensions) -> Point;
+    fn size_of(&self, item_size: Dimensions) -> i16;
 }
 
 impl ForEachDirection for Vertical {
@@ -71,13 +71,13 @@ impl ForEachDirection for Vertical {
         LayoutDirection::Vertical
     }
 
-    fn align(&self, accumulated: i32, layout_size: Dimensions, item_size: Dimensions) -> Point {
+    fn align(&self, accumulated: i16, layout_size: Dimensions, item_size: Dimensions) -> Point {
         let alignment = &self.0;
         let width = alignment.align(layout_size.width.into(), item_size.width.into());
         Point::new(width, accumulated)
     }
 
-    fn size_of(&self, item_size: Dimensions) -> i32 {
+    fn size_of(&self, item_size: Dimensions) -> i16 {
         item_size.height.into()
     }
 }
@@ -87,13 +87,13 @@ impl ForEachDirection for Horizontal {
         LayoutDirection::Horizontal
     }
 
-    fn align(&self, accumulated: i32, layout_size: Dimensions, item_size: Dimensions) -> Point {
+    fn align(&self, accumulated: i16, layout_size: Dimensions, item_size: Dimensions) -> Point {
         let alignment = &self.0;
         let height = alignment.align(layout_size.height.into(), item_size.height.into());
         Point::new(accumulated, height)
     }
 
-    fn size_of(&self, item_size: Dimensions) -> i32 {
+    fn size_of(&self, item_size: Dimensions) -> i16 {
         item_size.width.into()
     }
 }
@@ -222,7 +222,7 @@ where
 
     /// Inserts spacing between child views
     #[must_use]
-    pub const fn with_spacing(mut self, spacing: u32) -> Self {
+    pub const fn with_spacing(mut self, spacing: u16) -> Self {
         self.spacing = spacing;
         self
     }
@@ -331,7 +331,7 @@ where
 
         // collect the unsized subviews with the max layout priority into a group
         let mut subviews_indices: [usize; N] = [0; N];
-        let mut flexibilities: [Dimension; N] = [0u32.into(); N];
+        let mut flexibilities: [Dimension; N] = [0u16.into(); N];
         let size = layout_n(
             &subview_stages,
             &mut subviews_indices,
@@ -385,7 +385,7 @@ where
                 accumulated_size += self
                     .direction_with_alignment
                     .size_of(item_layout.resolved_size)
-                    + self.spacing as i32;
+                    + self.spacing as i16;
             }
         }
 
@@ -527,7 +527,7 @@ fn layout_n(
     flexibilities: &mut [Dimension],
     direction: LayoutDirection,
     offer: ProposedDimensions,
-    spacing: u32,
+    spacing: u16,
     layout_fn: &mut dyn FnMut(usize, ProposedDimensions) -> Dimensions,
 ) -> Dimensions {
     let proposed_dimension = match direction {
@@ -536,9 +536,9 @@ fn layout_n(
     };
     let ProposedDimension::Exact(size) = proposed_dimension else {
         // Compact or infinite offer
-        let mut total_size: Dimension = 0u32.into();
-        let mut max_cross_size: Dimension = 0u32.into();
-        let mut non_empty_views: u32 = 0;
+        let mut total_size: Dimension = 0u16.into();
+        let mut max_cross_size: Dimension = 0u16.into();
+        let mut non_empty_views: u16 = 0;
         for (i, (_, is_empty)) in subviews.iter().enumerate() {
             // layout must be called at least once on every view to avoid panic unwrapping the
             // resolved layout.
@@ -570,7 +570,7 @@ fn layout_n(
     // compute the "flexibility" of each view on the vertical axis and sort by decreasing
     // flexibility
     // Flexibility is defined as the difference between the responses to 0 and infinite height offers
-    flexibilities.fill(Dimension::from(0u32));
+    flexibilities.fill(Dimension::from(0u16));
     let mut num_empty_views = 0;
     let (min_proposal, max_proposal) = match direction {
         LayoutDirection::Horizontal => (
@@ -609,10 +609,10 @@ fn layout_n(
         };
     }
 
-    let len = subviews.len() as u32;
+    let len = subviews.len() as u16;
     let mut remaining_size = size.saturating_sub(spacing * len.saturating_sub(num_empty_views + 1));
     let mut last_priority_group: Option<i8> = None;
-    let mut max_cross_size: Dimension = 0u32.into();
+    let mut max_cross_size: Dimension = 0u16.into();
     loop {
         subviews_indices.fill(0);
         let mut max = i8::MIN;
@@ -649,7 +649,7 @@ fn layout_n(
         let group_indices = &mut subviews_indices[slice_start..slice_start + slice_len];
         group_indices.sort_unstable_by_key(|&i| flexibilities[i]);
 
-        let mut remaining_group_size = group_indices.len() as u32;
+        let mut remaining_group_size = group_indices.len() as u16;
 
         match direction {
             LayoutDirection::Horizontal => {

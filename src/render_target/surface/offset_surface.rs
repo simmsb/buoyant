@@ -22,8 +22,8 @@ impl<S: Surface> Surface for OffsetSurface<S> {
     fn size(&self) -> Size {
         // TODO: Is this really the correct / expected behavior?
         let mut size = self.surface.size();
-        size.width -= self.offset.x as u32;
-        size.height -= self.offset.y as u32;
+        size.width -= self.offset.x as u16;
+        size.height -= self.offset.y as u16;
         size
     }
 
