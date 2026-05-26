@@ -67,7 +67,7 @@ pub struct Differ<'a> {
     /// granular is false if we've entered a context where we don't statically
     /// know the size
     granular: bool,
-    idx: usize,
+    idx: u16,
     pub(crate) array: &'a mut bitvec::slice::BitSlice<u8>,
     pub(crate) dirty_aabb: &'a mut StaticAABBTree<30>,
     pub(crate) drawn_aabb: &'a mut StaticAABBTree<30>,
@@ -75,13 +75,13 @@ pub struct Differ<'a> {
 }
 
 #[derive(Debug)]
-pub struct DifferReservation(usize);
+pub struct DifferReservation(u16);
 
 #[derive(Debug)]
 pub struct DifferGranularity(bool);
 
 #[derive(Debug, Clone, Copy)]
-pub struct DifferNote(usize);
+pub struct DifferNote(u16);
 
 impl<'a> Differ<'a> {
     pub fn new(
@@ -243,7 +243,7 @@ impl<'a> Differ<'a> {
             return;
         }
 
-        self.array.set(reservation.0, changed);
+        self.array.set(reservation.0 as usize, changed);
     }
 
     pub fn push_inner(&mut self, changed: bool) {
@@ -259,7 +259,7 @@ impl<'a> Differ<'a> {
             return;
         }
 
-        self.array.set(idx, changed);
+        self.array.set(idx as usize, changed);
     }
 
     pub fn push(&mut self, changed: bool) {
@@ -280,12 +280,12 @@ impl<'a> Differ<'a> {
         let idx = self.idx;
         self.idx += 1;
 
-        self.array[idx]
+        self.array[idx as usize]
     }
 
     pub fn ignore(&mut self, n: usize) {
         // println!("Differ ignore {} +{}", self.idx, n);
-        self.idx += n;
+        self.idx += n as u16;
     }
 
     pub fn reset(&mut self) {
