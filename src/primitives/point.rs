@@ -87,8 +87,8 @@ impl core::ops::Add<Size> for Point {
 impl Interpolate for Point {
     fn interpolate(from: Self, to: Self, amount: u8) -> Self {
         Self {
-            x: ((i16::from(amount) * to.x) + (i16::from(255 - amount) * from.x)) / 255,
-            y: ((i16::from(amount) * to.y) + (i16::from(255 - amount) * from.y)) / 255,
+            x: (((i32::from(amount) * to.x as i32) + (i32::from(255 - amount) * from.x as i32)) / 255) as i16,
+            y: (((i32::from(amount) * to.y as i32) + (i32::from(255 - amount) * from.y as i32)) / 255) as i16,
         }
     }
 }
@@ -96,17 +96,17 @@ impl Interpolate for Point {
 impl CoordinateSpaceTransform for Point {
     fn applying(&self, transform: &LinearTransform) -> Self {
         Self {
-            x: (self.x * transform.scale.cast_signed()).to_num::<i16>() + transform.offset.x,
-            y: (self.y * transform.scale.cast_signed()).to_num::<i16>() + transform.offset.y,
+            x: (self.x as i32 * transform.scale.cast_signed().to_fixed::<fixed::types::I18F14>()).to_num::<i16>() + transform.offset.x,
+            y: (self.y as i32 * transform.scale.cast_signed().to_fixed::<fixed::types::I18F14>()).to_num::<i16>() + transform.offset.y,
         }
     }
 
     fn applying_inverse(&self, transform: &LinearTransform) -> Self {
         let p = *self - transform.offset;
         Self {
-            x: (p.x.to_fixed::<fixed::types::I9F7>() / transform.scale.cast_signed())
+            x: (p.x.to_fixed::<fixed::types::I18F14>() / transform.scale.cast_signed().to_fixed::<fixed::types::I18F14>())
                 .to_num::<i16>(),
-            y: (p.y.to_fixed::<fixed::types::I9F7>() / transform.scale.cast_signed())
+            y: (p.y.to_fixed::<fixed::types::I18F14>() / transform.scale.cast_signed().to_fixed::<fixed::types::I18F14>())
                 .to_num::<i16>(),
         }
     }

@@ -329,13 +329,13 @@ pub mod simulator {
                     if direction == embedded_graphics_simulator::sdl2::MouseWheelDirection::Flipped
                     {
                         Some(Event::Scroll(Point::new(
-                            scroll_delta.x * 4,
-                            scroll_delta.y * 4,
+                            (scroll_delta.x * 4) as i16,
+                            (scroll_delta.y * 4) as i16,
                         )))
                     } else {
                         Some(Event::Scroll(Point::new(
-                            -scroll_delta.x * 4,
-                            -scroll_delta.y * 4,
+                            (-scroll_delta.x * 4) as i16,
+                            (-scroll_delta.y * 4) as i16,
                         )))
                     }
                 }
