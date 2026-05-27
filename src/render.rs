@@ -99,15 +99,19 @@ impl<'a> Differ<'a> {
         }
     }
 
+    #[inline]
     pub fn become_nongranular(&mut self) -> DifferGranularity {
         let r = DifferGranularity(self.granular);
         self.granular = false;
         r
     }
 
+    #[inline]
     pub fn restore_granularity(&mut self, granularity: DifferGranularity) {
         self.granular = granularity.0;
     }
+
+    #[inline]
     pub fn restore_transform(&mut self, transform: LinearTransform) {
         self.transform = transform;
     }
@@ -131,61 +135,61 @@ impl<'a> Differ<'a> {
         transform
     }
 
+    #[inline]
     pub fn is_region_dirty<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
 
-        let bbt = bb.applying(&self.transform);
-
-        self.test_dirty_region(&bbt)
+        self.test_dirty_region(&bb)
     }
 
+    #[inline]
     pub fn is_region_overdrawn<R: IntrinsicShape>(&self, renderable: &R) -> bool {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return false;
         };
 
-        let bbt = bb.applying(&self.transform);
-
-        self.test_drawn_region(&bbt)
+        self.test_drawn_region(&bb)
     }
 
+    #[inline]
     pub fn dirty_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
 
-        let bbt = bb.applying(&self.transform);
-
-        self.add_dirty_region(bbt);
+        self.add_dirty_region(bb);
     }
 
+    #[inline]
     pub fn drawn_aabb_self<R: IntrinsicShape>(&mut self, renderable: &R) {
         let Some(bb) = renderable.content_shape().bounding_box() else {
             return;
         };
 
-        let bbt = bb.applying(&self.transform);
-
-        self.add_drawn_region(bbt);
+        self.add_drawn_region(bb);
     }
 
-    #[must_use]
-    pub fn test_dirty_region(&self, region: &Rectangle) -> bool {
+    #[inline(never)]
+    fn test_dirty_region(&self, region: &Rectangle) -> bool {
+        let region = region.applying(&self.transform);
         let mut result = false;
-        self.dirty_aabb.query_intersects(region, |_| result = true);
+        self.dirty_aabb.query_intersects(&region, |_| result = true);
         result
     }
 
-    #[must_use]
-    pub fn test_drawn_region(&self, region: &Rectangle) -> bool {
+    #[inline(never)]
+    fn test_drawn_region(&self, region: &Rectangle) -> bool {
+        let region = region.applying(&self.transform);
         let mut result = false;
-        self.drawn_aabb.query_intersects(region, |_| result = true);
+        self.drawn_aabb.query_intersects(&region, |_| result = true);
         result
     }
 
-    pub fn add_dirty_region(&mut self, region: Rectangle) {
+    #[inline(never)]
+    fn add_dirty_region(&mut self, region: Rectangle) {
+        let region = region.applying(&self.transform);
         let mut whole = region.clone();
 
         self.dirty_aabb
@@ -194,6 +198,7 @@ impl<'a> Differ<'a> {
         self.dirty_aabb.insert(whole);
     }
 
+    #[inline(never)]
     pub fn copy_drawn_as_dirty(&mut self, region: Rectangle) {
         self.drawn_aabb.query_intersects(&region, |r| {
             // println!("Dirtying drawn region {}", r);
@@ -201,6 +206,7 @@ impl<'a> Differ<'a> {
         });
     }
 
+    #[inline(never)]
     pub fn clear_dirty_where_drawn(&mut self, region: Rectangle) {
         self.drawn_aabb.query_overlaps(&region, |r| {
             // println!("Undirtying drawn region {}", r);
@@ -208,7 +214,9 @@ impl<'a> Differ<'a> {
         });
     }
 
-    pub fn add_drawn_region(&mut self, region: Rectangle) {
+    #[inline(never)]
+    fn add_drawn_region(&mut self, region: Rectangle) {
+        let region = region.applying(&self.transform);
         let mut whole = region.clone();
 
         self.dirty_aabb.drain_contained(&region, |_r| {});
@@ -219,6 +227,7 @@ impl<'a> Differ<'a> {
         self.drawn_aabb.insert(whole);
     }
 
+    #[inline]
     pub fn reserve(&mut self) -> DifferReservation {
         if !self.granular {
             return DifferReservation(self.idx);
@@ -230,14 +239,17 @@ impl<'a> Differ<'a> {
         DifferReservation(idx)
     }
 
+    #[inline]
     pub fn note(&mut self) -> DifferNote {
         DifferNote(self.idx)
     }
 
+    #[inline]
     pub fn restore(&mut self, note: DifferNote) {
         self.idx = note.0;
     }
 
+    #[inline]
     pub fn commit(&mut self, reservation: DifferReservation, changed: bool) {
         if !changed {
             return;
@@ -246,6 +258,7 @@ impl<'a> Differ<'a> {
         self.array.set(reservation.0 as usize, changed);
     }
 
+    // #[inline]
     pub fn push_inner(&mut self, changed: bool) {
         if !self.granular && changed {
             self.array.set(0, changed);
@@ -262,16 +275,19 @@ impl<'a> Differ<'a> {
         self.array.set(idx as usize, changed);
     }
 
+    #[inline]
     pub fn push(&mut self, changed: bool) {
         self.push_inner(changed);
     }
 
+    // #[inline]
     pub fn push_repeated(&mut self, changed: bool, n: usize) {
         for _ in 0..n {
             self.push_inner(changed);
         }
     }
 
+    // #[inline]
     pub fn pop(&mut self) -> bool {
         if !self.granular {
             return self.array[0];
@@ -283,6 +299,7 @@ impl<'a> Differ<'a> {
         self.array[idx as usize]
     }
 
+    #[inline]
     pub fn ignore(&mut self, n: usize) {
         // println!("Differ ignore {} +{}", self.idx, n);
         self.idx += n as u16;
