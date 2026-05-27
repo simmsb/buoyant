@@ -216,8 +216,8 @@ where
     pub fn force_rebuild(&mut self) {
         let domain = AnimationDomain::top_level(self.elapsed);
         self.trees.swap();
-        let (source_tree, target_tree) = self.trees.both_mut();
-        source_tree.join_from(target_tree, &domain);
+        let (_source_tree, target_tree) = self.trees.both_mut();
+        // source_tree.join_from(target_tree, &domain);
 
         // Create new view and target tree
         self.view = (self.view_fn)(&self.state);

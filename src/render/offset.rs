@@ -26,8 +26,7 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.offset != other.offset
             || differ.is_region_dirty(self)
-            || differ.is_region_overdrawn(self)
-            ;
+            || differ.is_region_overdrawn(self);
 
         let r = differ.reserve();
 
@@ -43,14 +42,19 @@ impl<T: Diffable + IntrinsicShape> Diffable for Offset<T> {
 
         differ.restore_transform(transform);
 
-        differ.commit(r, changed || differ.is_region_dirty(self));
+        let changed = changed || differ.is_region_dirty(self);
+
+        // defmt::debug!("Offset at {} (addr: {}) (prev: {} (addr: {})) changed: {}", self.offset, (self as *const _ as *const ()), other.offset, (other as *const _ as *const ()), changed);
+
+        differ.commit(r, changed);
     }
 }
 
 impl<T: AnimatedJoin> AnimatedJoin for Offset<T> {
     fn join_from(&mut self, source: &Self, domain: &AnimationDomain) {
         self.subtree.join_from(&source.subtree, domain);
-        self.offset = Point::interpolate(source.offset, self.offset, domain.factor);
+        // self.offset = Point::interpolate(source.offset, self.offset, domain.factor);
+        // self.offset = source.offset;
     }
 }
 
@@ -99,6 +103,11 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for Offset<T> {
             render_target.with_layer(
                 |l| l.offset(offset),
                 |render_target| {
+                    // defmt::info!(
+                    //     "Stamping offset background at: {} with shape {}",
+                    //     offset,
+                    //     target.content_shape().bounding_box()
+                    // );
                     target.stamp_background(render_target);
                 },
             );

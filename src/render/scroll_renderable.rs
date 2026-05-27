@@ -9,7 +9,7 @@ use super::Diffable;
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub(crate) enum ScrollDragging {
     Dragging,
-    NotDragging
+    NotDragging,
 }
 
 // This hacks together scroll functionality from existing primitives, but
@@ -38,9 +38,9 @@ impl<T> ScrollRenderable<T> {
         self.inner.subtree.0.offset
     }
 
-    pub fn offset_mut(&mut self) -> &mut Point {
-        &mut self.inner.subtree.0.offset
-    }
+    // pub fn offset_mut(&mut self) -> &mut Point {
+    //     &mut self.inner.subtree.0.offset
+    // }
 
     /// The bounds of the scrollview itself
     pub fn bounds(&self) -> Rectangle {
@@ -63,12 +63,13 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
     fn diff_with(&self, other: &Self, differ: &mut super::Differ<'_>) {
         let changed = self.scroll_size != other.scroll_size
             || self.inner_size != other.inner_size
+            || self.offset() != other.offset()
+            // || self.inner.offset != other.inner.offset
+            // || self.inner.subtree.0.offset != other.inner.subtree.0.offset
             || differ.is_region_dirty(self)
-            || differ.is_region_overdrawn(self)
-            ;
+            || differ.is_region_overdrawn(self);
 
         let r = differ.reserve();
-
 
         if changed {
             differ.push_repeated(true, T::SIZE);
@@ -78,7 +79,11 @@ impl<T: Diffable + IntrinsicShape> Diffable for ScrollRenderable<T> {
             self.inner.diff_with(&other.inner, differ);
         }
 
-        differ.commit(r, changed || differ.is_region_dirty(self));
+        let changed = changed || differ.is_region_dirty(self);
+
+        // defmt::info!("Scroll view changed: {}", changed);
+
+        differ.commit(r, changed);
     }
 }
 
@@ -125,6 +130,17 @@ impl<T: Render<C>, C: Interpolate + Copy> Render<C> for ScrollRenderable<T> {
     ) {
         if differ.pop() {
             target.stamp_background(render_target);
+            // render_target.with_layer(
+            //     |l| l.offset(target.inner.offset),
+            //     |render_target| {
+            //         // defmt::info!(
+            //         //     "Stamping scroll background at: {} with shape {}",
+            //         //     target.inner.offset,
+            //         //     target.content_shape().bounding_box()
+            //         // );
+            //         target.stamp_background(render_target);
+            //     },
+            // );
             Self::render_animated(render_target, source, target, style, domain);
             differ.ignore(T::SIZE);
         } else {

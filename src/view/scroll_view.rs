@@ -457,7 +457,7 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
                     }
 
                     state.scroll_offset = new_offset;
-                    *render_tree.offset_mut() = new_offset;
+                    // *render_tree.offset_mut() = new_offset;
                 }
 
                 // Always adjust shape with offset so parent views see correct position
@@ -547,7 +547,7 @@ impl<Inner: ViewLayout<Captures>, Captures> ViewLayout<Captures> for ScrollView<
 
                 offset
             };
-            *render_tree.offset_mut() = subview_offset;
+            // *render_tree.offset_mut() = subview_offset;
             let (horizontal_bar, vertical_bar) = self.scroll_bars(
                 Point::zero(),
                 render_tree.scroll_size,
