@@ -141,7 +141,6 @@ where
                     action: FocusAction::Blur | FocusAction::Select | FocusAction::Teardown,
                     ..
                 }
-                | Event::Scroll(_)
                 | Event::KeyUp(_)
                 | Event::KeyDown(_) => {
                     // Don't auto-initialize for these actions
@@ -149,11 +148,6 @@ where
                         return EventResult::deferred();
                     };
                     tree
-                }
-                Event::Touch(_) => {
-                    // Touch events route with depth first search, we can generally expect
-                    // child views to want first-focus if uninitialized
-                    focus.get_or_init(index, FocusDirection::Forward)
                 }
             };
 

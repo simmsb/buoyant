@@ -269,23 +269,6 @@ where
                     }
                 }
             };
-        } else if let Event::Touch(touch) = event
-            && render_tree.content_shape().contains(touch.location.into())
-        {
-            // Just move focus to this element on touch for now, but we could maybe
-            // also support dragging or scroll events.
-            match state.0 {
-                RotaryState::UnFocused => {
-                    context.request_view_rebuild();
-                    state.0 = RotaryState::Focused;
-                    return EventResult::handled_focused(render_tree.content_shape());
-                }
-                RotaryState::Captive | RotaryState::Focused => {
-                    // This prevents focus_touches from sending a `Terminate` event and
-                    // swapping to the new touch focus tree.
-                    return EventResult::handled_unfocused();
-                }
-            }
         } else {
             EventResult::deferred()
         }

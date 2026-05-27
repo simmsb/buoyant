@@ -10,10 +10,6 @@ use crate::{
 #[non_exhaustive]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Event {
-    /// A touch event.
-    Touch(embedded_touch::Touch),
-    /// A scroll event with the given offset.
-    Scroll(Point),
     /// A request to move focus, often driven by navigational buttons
     /// or an encoder.
     Focus {
@@ -23,31 +19,9 @@ pub enum Event {
         group: FocusGroup,
     },
     /// A key was pressed.
-    KeyDown(Key),
+    KeyDown(u8),
     /// A key was released.
-    KeyUp(Key),
-}
-
-/// A key press event.
-#[non_exhaustive]
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Key {
-    /// A character key.
-    Character(char),
-    /// The up arrow key.
-    UpArrow,
-    /// The down arrow key.
-    DownArrow,
-    /// The left arrow key.
-    LeftArrow,
-    /// The right arrow key.
-    RightArrow,
-    /// The escape key.
-    Escape,
-    /// The backspace key.
-    Backspace,
-    /// The delete key.
-    Delete,
+    KeyUp(u8),
 }
 
 impl From<FocusAction> for Event {
@@ -62,15 +36,8 @@ impl From<FocusAction> for Event {
 impl Event {
     /// Returns a new event with the specified offset applied to any point-based data.
     #[must_use]
-    pub fn offset(&self, offset: Point) -> Self {
-        let mut event = self.clone();
-        match &mut event {
-            Self::Touch(touch) => {
-                touch.location += offset.into();
-            }
-            Self::Scroll(_) | Self::Focus { .. } | Self::KeyDown(_) | Self::KeyUp(_) => {}
-        }
-        event
+    pub fn offset(&self, _offset: Point) -> Self {
+        self.clone()
     }
 
     /// Returns a new event with the specified focus group set on Focus events.

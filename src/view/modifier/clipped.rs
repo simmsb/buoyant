@@ -92,10 +92,6 @@ where
         // only cull inner handling of start touches. Drag/end may move outside the clip rect
         // but they should sill be tracked
         let should_handle = match event {
-            Event::Touch(touch) => {
-                touch.phase != Phase::Started
-                    || render_tree.clip_rect.contains(&From::from(touch.location))
-            }
             _ => true,
         };
         if should_handle {

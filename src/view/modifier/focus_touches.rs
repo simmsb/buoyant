@@ -80,61 +80,8 @@ where
         state: &mut Self::State,
         focus: &mut Self::FocusTree,
     ) -> EventResult {
-        // Non-touch events are unaffected
-        let Event::Touch(_) = event else {
-            return self
-                .child
-                .handle_event(event, context, render_tree, captures, state, focus);
-        };
-
-        // TODO: Which occurs more often: a touch event that changes focus, or one that doesn't?
-        // We can save some moves if this is known.
-        let mut candidate_focus = focus.clone();
-
-        // Handle the event with the cloned candidate focus and only apply focus
-        // changes if the event was handled
-
-        let result = self.child.handle_event(
-            event,
-            context,
-            render_tree,
-            captures,
-            state,
-            &mut candidate_focus,
-        );
-
-        if let EventResult::Handled {
-            request_focus: true,
-            group,
-            ..
-        } = result
-        {
-            _ = self.child.handle_event(
-                &Event::Focus {
-                    action: FocusAction::Teardown,
-                    group,
-                },
-                context,
-                render_tree,
-                captures,
-                state,
-                focus,
-            );
-            *focus = candidate_focus;
-            // Reassert original focus
-            _ = self.child.handle_event(
-                &Event::Focus {
-                    action: FocusAction::Focus(FocusDirection::Forward),
-                    group,
-                },
-                context,
-                render_tree,
-                captures,
-                state,
-                focus,
-            );
-        }
-
-        result
+        return self
+            .child
+            .handle_event(event, context, render_tree, captures, state, focus);
     }
 }
