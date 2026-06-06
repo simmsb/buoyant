@@ -3,7 +3,7 @@ use fixed_macro::fixed;
 
 use crate::primitives::{Interpolate, Point};
 
-pub type ScaleFactor = fixed::types::U9F7;
+pub type ScaleFactor = fixed::types::U11F5;
 
 /// A type which can be transformed from one coordinate space to another.
 pub trait CoordinateSpaceTransform {
@@ -38,7 +38,7 @@ impl LinearTransform {
     pub const fn new_offset(offset: Point) -> Self {
         Self {
             offset,
-            scale: fixed!(1: U9F7),
+            scale: fixed!(1: U11F5),
         }
     }
 
@@ -46,7 +46,7 @@ impl LinearTransform {
     pub const fn identity() -> Self {
         Self {
             offset: Point::new(0, 0),
-            scale: fixed!(1: U9F7),
+            scale: fixed!(1: U11F5),
         }
     }
 
@@ -82,7 +82,7 @@ impl Default for LinearTransform {
     fn default() -> Self {
         Self {
             offset: Point::new(0, 0),
-            scale: fixed!(1: U9F7),
+            scale: fixed!(1: U11F5),
         }
     }
 }

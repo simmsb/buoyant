@@ -1,32 +1,28 @@
-#[derive(PartialEq, Eq, Clone, Copy, Default)]
+#[derive(PartialEq, Eq, Clone, Copy, defmt::Format, Default)]
 pub enum Page {
-    Locked,
-    #[default]
     Home,
     Settings,
+    #[default]
+    Info,
 }
 
 impl Page {
     pub fn handle_action(&self, action: PageAction) -> Option<Self> {
+        // This is a bit redundant, but we might want to case it on the
+        // current page in the future
         match (self, action) {
-            (Page::Locked, PageAction::Unlock) => Some(Page::Home),
-            (Page::Locked, _) => return None,
-            (Page::Home, PageAction::Lock) => Some(Page::Locked),
-            (Page::Home, PageAction::EnterSettings) => Some(Page::Settings),
-            (Page::Home, _) => return None,
-            (Page::Settings, PageAction::Lock) => Some(Page::Locked),
-            (Page::Settings, PageAction::ExitSettings) => Some(Page::Home),
-            (Page::Settings, _) => return None,
+            (_, PageAction::EnterSettings) => Some(Page::Settings),
+            (_, PageAction::ExitSettings) => Some(Page::Home),
+            (_, PageAction::EnterInfo) => Some(Page::Info),
         }
     }
 }
 
 #[derive(PartialEq, Eq, Clone, Copy)]
 pub enum PageAction {
-    Lock,
-    Unlock,
     EnterSettings,
     ExitSettings,
+    EnterInfo,
 }
 
 #[derive(PartialEq, Eq, Clone, Copy, rotate_enum::RotateEnum)]

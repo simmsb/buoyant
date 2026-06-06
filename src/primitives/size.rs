@@ -1,6 +1,6 @@
 use core::cmp::max;
 
-use fixed::traits::ToFixed as _;
+use fixed::traits::ToFixed;
 
 use crate::primitives::{
     Interpolate, Point,

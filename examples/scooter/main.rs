@@ -7,26 +7,24 @@ use std::process::exit;
 use std::time::{Duration, Instant};
 
 use buoyant::app::{App, Harness};
-use buoyant::event::{Event, Key, simulator::MouseTracker};
+use buoyant::event::Event;
 use buoyant::focus::{BoundaryBehavior, FocusAction, Role};
 use buoyant::render_target::{EmbeddedGraphicsRenderTarget, RenderTarget as _};
 use buoyant::{animation::Animation, match_view, view::prelude::*};
 use embedded_graphics::{pixelcolor::Rgb888, prelude::*};
-use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, SimulatorEvent, Window};
+use embedded_graphics_simulator::{OutputSettings, SimulatorDisplay, SimulatorEvent, Window, sdl2::Keycode};
 
 use self::state::OperationState;
 
 pub mod keys {
-    use buoyant::event::Key;
-
-    pub const UP_CLICK: Key = Key::UpArrow;
-    pub const UP_HOLD: Key = Key::Character('1');
-    pub const DOWN_CLICK: Key = Key::DownArrow;
-    pub const DOWN_HOLD: Key = Key::Character('3');
-    pub const CONFIRM_CLICK: Key = Key::Character('0');
-    pub const CONFIRM_HOLD: Key = Key::Character('5');
-    pub const POWER_CLICK: Key = Key::Character('6');
-    pub const POWER_HOLD: Key = Key::Character('7');
+    pub const UP_CLICK: u8 = 0;
+    pub const UP_HOLD: u8 = 1;
+    pub const DOWN_CLICK: u8 = 2;
+    pub const DOWN_HOLD: u8 = 3;
+    pub const CONFIRM_CLICK: u8 = 4;
+    pub const CONFIRM_HOLD: u8 = 5;
+    pub const POWER_CLICK: u8 = 6;
+    pub const POWER_HOLD: u8 = 7;
 }
 
 pub mod ui {
@@ -96,7 +94,6 @@ fn main() {
     window.update(target.display());
 
     let app_start = Instant::now();
-    let mut touch_tracker = MouseTracker::new();
 
     // Create app with view lifecycle management
     let mut app = App::new(state::State::new(), size.into(), view::root_view)
@@ -119,7 +116,17 @@ fn main() {
                 if event == SimulatorEvent::Quit {
                     exit(0);
                 }
-                touch_tracker.process_event(event)
+                Some(match event {
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num0, .. } => Event::KeyDown(0),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num1, .. } => Event::KeyDown(1),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num2, .. } => Event::KeyDown(2),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num3, .. } => Event::KeyDown(3),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num4, .. } => Event::KeyDown(4),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num5, .. } => Event::KeyDown(5),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num6, .. } => Event::KeyDown(6),
+                    SimulatorEvent::KeyDown { keycode: Keycode::Num7, .. } => Event::KeyDown(7),
+                    _ => return None,
+                })
             })
             .for_each(|event| {
                 app.send(event);

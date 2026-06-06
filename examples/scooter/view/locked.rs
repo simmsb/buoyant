@@ -1,6 +1,6 @@
 
 use buoyant::{
-    event::{Event, Key},
+    event::Event,
     focus::{self, FocusAction},
     match_view,
     view::{
@@ -108,7 +108,6 @@ pub fn view(state: &state::State) -> impl View<ColorFormat, state::State> + use<
                     == [PinDigit::D2, PinDigit::D7, PinDigit::D0, PinDigit::D8]
                 {
                     state.locked_state.pin = Default::default();
-                    state.page_action = Some(state::PageAction::Unlock);
                 }
             },
             |bs| {
